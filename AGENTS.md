@@ -28,8 +28,11 @@ home-assistant-simple-smart-cover/
 │   ├── sensor.py            # Target position & decision reason sensors
 │   ├── trigger.py           # Time/sun-based re-evaluation triggers
 │   ├── translations/de.json # German UI translations
-│   ├── icon.png             # Brand icon for HA integration card
-│   └── logo.png             # Larger brand icon
+│   ├── icon.png             # Brand icon for HA integration card (128x128)
+│   ├── icon@2x.png          # Brand icon retina (256x256)
+│   ├── logo.png             # Larger brand icon (256x256)
+│   └── logo@2x.png          # Larger brand icon retina (512x512)
+├── brands/simple_smart_cover/ # Ready-to-use files for home-assistant/brands PR
 ├── hacs.json                # HACS metadata
 ├── icon.svg                 # Source SVG for the brand icon
 ├── .gitignore
