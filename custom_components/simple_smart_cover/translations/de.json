@@ -5,6 +5,10 @@
       "user": {
         "title": "Simple Smart Cover einrichten",
         "description": "Richte eine intelligente Rollladensteuerung basierend auf Wetter und Sonnenstand ein.",
+        "menu_options": {
+          "create_new": "Neue Gruppe erstellen",
+          "duplicate_existing": "Bestehende Gruppe kopieren"
+        },
         "data_description": {
           "name": "Name der Rollladen-Gruppe. Daraus wird die Entity-ID erzeugt.",
           "covers": "Alle Rollläden, die gemeinsam gesteuert werden sollen.",
@@ -58,6 +62,26 @@
           "enable_manual_activity_pause": "Pause nach manueller Bedienung",
           "manual_activity_duration": "Dauer der manuellen Pause",
           "test_mode": "Testmodus (keine Bewegung)"
+        }
+      },
+      "create_new": {
+        "title": "Neue Gruppe erstellen",
+        "description": "Richte eine intelligente Rollladensteuerung basierend auf Wetter und Sonnenstand ein."
+      },
+      "duplicate_select": {
+        "title": "Gruppe kopieren",
+        "description": "Wähle die bestehende Gruppe aus, deren Einstellungen übernommen werden sollen.",
+        "data": {
+          "source_entry": "Quell-Gruppe"
+        }
+      },
+      "duplicate_configure": {
+        "title": "Kopierte Gruppe konfigurieren",
+        "description": "Passe Name, Rollläden und Ausrichtung für die Kopie der Gruppe \"{source_name}\" an. {warning}",
+        "data": {
+          "name": "Name der neuen Gruppe",
+          "covers": "Rollläden",
+          "window_orientation": "Fenster-Ausrichtung (Azimuth)"
         }
       }
     }

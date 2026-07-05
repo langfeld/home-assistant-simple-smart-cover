@@ -113,6 +113,7 @@ class SimpleSmartCoverEntity(CoverEntity):
         self._should_move = False
         self._last_sent_positions: dict[str, tuple[datetime, int]] = {}
         self._manual_pause_until: datetime | None = None
+        self._force_evening = False
 
     @property
     def _data(self) -> dict[str, Any]:
@@ -131,7 +132,11 @@ class SimpleSmartCoverEntity(CoverEntity):
         self, hass: HomeAssistant, config_entry: ConfigEntry
     ) -> None:
         """Handle options update."""
-        await self.async_update_position(is_evening=False)
+        await self.async_update_position()
+
+    def set_evening_state(self, is_evening: bool) -> None:
+        """Set whether evening mode should be forced."""
+        self._force_evening = is_evening
 
     @property
     def current_cover_position(self) -> int:
@@ -380,8 +385,12 @@ class SimpleSmartCoverEntity(CoverEntity):
             return "sunny_outside_angle"
         return "sunny_in_angle"
 
-    async def async_update_position(self, is_evening: bool = False) -> None:
+    async def async_update_position(self, is_evening: bool | None = None) -> None:
         """Update target position and move covers if needed."""
+        if is_evening is not None:
+            self._force_evening = is_evening
+        is_evening = self._force_evening
+
         if self._is_quiet_time():
             self._decision_reason = "quiet_time"
             self._should_move = False

@@ -10,7 +10,7 @@ from homeassistant import config_entries
 from homeassistant.components.cover import DOMAIN as COVER_DOMAIN
 from homeassistant.components.weather import DOMAIN as WEATHER_DOMAIN
 from homeassistant.const import CONF_NAME
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
@@ -79,6 +79,72 @@ _OPTIONAL_KEYS = [
     CONF_TEMP_SOURCE,
     CONF_TEMP_FORECAST_ENTITY,
 ]
+
+
+def _get_existing_entries(hass: HomeAssistant) -> list[config_entries.ConfigEntry]:
+    """Return existing Simple Smart Cover config entries."""
+    return hass.config_entries.async_entries(DOMAIN)
+
+
+def _ensure_unique_name(
+    hass: HomeAssistant, name: str, suffix: str = "Kopie"
+) -> str:
+    """Ensure the config entry name is unique."""
+    existing_names = {
+        e.data.get(CONF_NAME) for e in _get_existing_entries(hass) if CONF_NAME in e.data
+    }
+
+    if name not in existing_names:
+        return name
+
+    suffixed = f"{name} ({suffix})"
+    if suffixed not in existing_names:
+        return suffixed
+
+    counter = 2
+    while f"{name} ({suffix} {counter})" in existing_names:
+        counter += 1
+    return f"{name} ({suffix} {counter})"
+
+
+def _get_used_covers(hass: HomeAssistant) -> set[str]:
+    """Return covers already used by other Simple Smart Cover entries."""
+    used: set[str] = set()
+    for entry in _get_existing_entries(hass):
+        used.update(entry.data.get(CONF_COVERS, []))
+        used.update(entry.options.get(CONF_COVERS, []))
+    return used
+
+
+def _get_duplicate_schema(defaults: dict[str, Any]) -> vol.Schema:
+    """Return schema for the duplicate configuration step."""
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_NAME, default=defaults.get(CONF_NAME)
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_COVERS, default=defaults.get(CONF_COVERS, [])
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=COVER_DOMAIN,
+                    multiple=True,
+                )
+            ),
+            vol.Optional(
+                CONF_WINDOW_ORIENTATION,
+                default=defaults.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=360,
+                    step=1,
+                    unit_of_measurement="°",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+        }
+    )
 
 
 def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
@@ -334,6 +400,11 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        super().__init__()
+        self._duplicate_source_entry: config_entries.ConfigEntry | None = None
+
     @staticmethod
     @callback
     def async_get_options_flow(
@@ -346,6 +417,19 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
+        menu_options = ["create_new"]
+        if _get_existing_entries(self.hass):
+            menu_options.append("duplicate_existing")
+
+        return self.async_show_menu(
+            step_id="user",
+            menu_options=menu_options,
+        )
+
+    async def async_step_create_new(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle creating a new group."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -356,9 +440,108 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="create_new",
             data_schema=_get_schema(),
             errors=errors,
+        )
+
+    async def async_step_duplicate_existing(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Start duplication flow."""
+        return await self.async_step_duplicate_select(user_input)
+
+    async def async_step_duplicate_select(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select source entry to duplicate."""
+        if user_input is not None:
+            entry_id = user_input["source_entry"]
+            source_entry = self.hass.config_entries.async_get_entry(entry_id)
+            if source_entry is None:
+                return self.async_abort(reason="source_not_found")
+            self._duplicate_source_entry = source_entry
+            return await self.async_step_duplicate_configure()
+
+        entries = _get_existing_entries(self.hass)
+        if not entries:
+            return self.async_abort(reason="source_not_found")
+
+        return self.async_show_form(
+            step_id="duplicate_select",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("source_entry"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                {"value": e.entry_id, "label": e.title}
+                                for e in entries
+                            ],
+                            multiple=False,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_duplicate_configure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure unique fields for the duplicated group."""
+        source_entry = self._duplicate_source_entry
+        if source_entry is None:
+            return self.async_abort(reason="source_not_found")
+
+        if user_input is not None:
+            new_name = _ensure_unique_name(
+                self.hass, user_input[CONF_NAME], suffix="Kopie"
+            )
+
+            # Merge data and options from source, then override unique fields
+            new_data = {**source_entry.data, **source_entry.options}
+            new_data[CONF_NAME] = new_name
+            new_data[CONF_COVERS] = user_input[CONF_COVERS]
+            new_data[CONF_WINDOW_ORIENTATION] = user_input[CONF_WINDOW_ORIENTATION]
+
+            # Remove keys that belong in options if they exist there
+            new_options = dict(source_entry.options)
+            new_options.pop(CONF_NAME, None)
+            new_options.pop(CONF_COVERS, None)
+            new_options.pop(CONF_WINDOW_ORIENTATION, None)
+
+            # Optional keys cleared in duplicate step must be nulled
+            _optional_entities(_OPTIONAL_KEYS, new_data)
+
+            return self.async_create_entry(
+                title=new_name,
+                data=new_data,
+                options=new_options,
+            )
+
+        defaults = {**source_entry.data, **source_entry.options}
+        defaults[CONF_NAME] = _ensure_unique_name(
+            self.hass, defaults.get(CONF_NAME, ""), suffix="Kopie"
+        )
+
+        # Warn about covers already used by other groups
+        used_covers = _get_used_covers(self.hass)
+        source_covers = set(source_entry.data.get(CONF_COVERS, []))
+        source_covers.update(source_entry.options.get(CONF_COVERS, []))
+        other_used = used_covers - source_covers
+        warning = ""
+        if other_used:
+            warning = (
+                "Achtung: Diese Covers werden bereits von anderen Gruppen "
+                f"verwendet: {', '.join(sorted(other_used))}"
+            )
+
+        return self.async_show_form(
+            step_id="duplicate_configure",
+            data_schema=_get_duplicate_schema(defaults),
+            description_placeholders={
+                "source_name": source_entry.title,
+                "warning": warning,
+            },
         )
 
 

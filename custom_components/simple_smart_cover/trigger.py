@@ -43,7 +43,8 @@ async def async_setup_triggers(
 
             @callback
             def _morning_trigger(now):
-                hass.async_create_task(cover_entity.async_update_position(is_evening=False))
+                cover_entity.set_evening_state(False)
+                hass.async_create_task(cover_entity.async_update_position())
 
             remove_callbacks.append(
                 async_track_time_change(
@@ -59,7 +60,7 @@ async def async_setup_triggers(
 
         @callback
         def _reevaluate_trigger(now):
-            hass.async_create_task(cover_entity.async_update_position(is_evening=False))
+            hass.async_create_task(cover_entity.async_update_position())
 
         if interval == "15":
             remove_callbacks.append(
@@ -85,7 +86,8 @@ async def async_setup_triggers(
             rising = new_state.attributes.get("rising")
             # rising=False means sun is setting
             if rising is False:
-                hass.async_create_task(cover_entity.async_update_position(is_evening=True))
+                cover_entity.set_evening_state(True)
+                hass.async_create_task(cover_entity.async_update_position())
 
         remove_callbacks.append(
             async_track_state_change_event(hass, "sun.sun", _sun_event)
