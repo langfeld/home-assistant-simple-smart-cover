@@ -13,6 +13,7 @@ from homeassistant.components.cover import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONF_NAME,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
 )
