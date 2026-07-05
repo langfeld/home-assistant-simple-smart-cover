@@ -15,10 +15,31 @@ Eine Home Assistant Integration zur automatischen Steuerung von Rollläden basie
 
 ## Installation
 
-1. Kopiere den Ordner `custom_components/simple_smart_cover` in dein Home Assistant `custom_components`-Verzeichnis.
-2. Starte Home Assistant neu.
-3. Gehe zu **Einstellungen → Geräte & Dienste → Integrationen → Hinzufügen**.
-4. Suche nach **Simple Smart Cover** und folge dem Einrichtungsdialog.
+### Variante 1: Über HACS (empfohlen)
+
+1. Stelle sicher, dass [HACS](https://hacs.xyz/) installiert ist.
+2. Öffne HACS und gehe zu **Integrationen**.
+3. Klicke oben rechts auf die drei Punkte und wähle **Benutzerdefiniertes Repository**.
+4. Füge die URL deines GitHub-Repositorys ein, z. B.:
+   ```
+   https://github.com/langfeld/home-assistant-simple-smart-cover
+   ```
+5. Wähle als Kategorie **Integration** aus und bestätige.
+6. Suche nach **Simple Smart Cover** in HACS und installiere es.
+7. Starte Home Assistant neu.
+8. Gehe zu **Einstellungen → Geräte & Dienste → Integrationen → Hinzufügen**.
+9. Suche nach **Simple Smart Cover** und folge dem Einrichtungsdialog.
+
+### Variante 2: Manuell
+
+1. Lade die Dateien aus dem Repository herunter.
+2. Kopiere den Ordner `custom_components/simple_smart_cover` in dein Home Assistant `custom_components`-Verzeichnis:
+   ```
+   config/custom_components/simple_smart_cover/
+   ```
+3. Starte Home Assistant neu.
+4. Gehe zu **Einstellungen → Geräte & Dienste → Integrationen → Hinzufügen**.
+5. Suche nach **Simple Smart Cover** und folge dem Einrichtungsdialog.
 
 ## Entitäten pro Gruppe
 
