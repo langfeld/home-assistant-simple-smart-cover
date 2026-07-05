@@ -78,9 +78,8 @@ async def async_setup_entry(
         [
             SimpleSmartCoverEntity(
                 hass=hass,
-                entry_id=config_entry.entry_id,
+                config_entry=config_entry,
                 name=data[CONF_NAME],
-                data=data,
             )
         ]
     )
@@ -98,20 +97,37 @@ class SimpleSmartCoverEntity(CoverEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        entry_id: str,
+        config_entry: ConfigEntry,
         name: str,
-        data: dict[str, Any],
     ) -> None:
         """Initialize the cover entity."""
         self.hass = hass
-        self._entry_id = entry_id
+        self._config_entry = config_entry
+        self._entry_id = config_entry.entry_id
         self._attr_name = name
-        self._attr_unique_id = f"{entry_id}_cover"
-        self._data = data
+        self._attr_unique_id = f"{config_entry.entry_id}_cover"
 
         self._target_position = 100
         self._decision_reason = "unknown"
         self._should_move = False
+
+    @property
+    def _data(self) -> dict[str, Any]:
+        """Return merged config entry data and options."""
+        return {**self._config_entry.data, **self._config_entry.options}
+
+    async def async_added_to_hass(self) -> None:
+        """Register update listener for options changes."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self._config_entry.add_update_listener(self._async_update_options)
+        )
+
+    async def _async_update_options(
+        self, hass: HomeAssistant, config_entry: ConfigEntry
+    ) -> None:
+        """Handle options update."""
+        await self.async_update_position(is_evening=False)
 
     @property
     def current_cover_position(self) -> int:

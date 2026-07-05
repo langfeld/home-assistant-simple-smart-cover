@@ -61,10 +61,284 @@ from .const import (
 )
 
 
+def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Return the schema used by both config and options flow."""
+    defaults = defaults or {}
+
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_NAME, default=defaults.get(CONF_NAME)
+            ): str,
+            vol.Required(
+                CONF_COVERS, default=defaults.get(CONF_COVERS, [])
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=COVER_DOMAIN,
+                    multiple=True,
+                )
+            ),
+            vol.Required(
+                CONF_WEATHER_ENTITY, default=defaults.get(CONF_WEATHER_ENTITY)
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=WEATHER_DOMAIN,
+                    multiple=False,
+                )
+            ),
+            vol.Optional(
+                CONF_MORNING_TIME, default=defaults.get(CONF_MORNING_TIME, DEFAULT_MORNING_TIME)
+            ): str,
+            vol.Optional(
+                CONF_ENABLE_MORNING, default=defaults.get(CONF_ENABLE_MORNING, True)
+            ): bool,
+            vol.Optional(
+                CONF_ENABLE_EVENING, default=defaults.get(CONF_ENABLE_EVENING, True)
+            ): bool,
+            vol.Optional(
+                CONF_WINDOW_ORIENTATION,
+                default=defaults.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=360,
+                    step=1,
+                    unit_of_measurement="°",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_SUN_ANGLE_TOLERANCE,
+                default=defaults.get(CONF_SUN_ANGLE_TOLERANCE, DEFAULT_SUN_ANGLE_TOLERANCE),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=180,
+                    step=1,
+                    unit_of_measurement="°",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_MIN_SUN_ELEVATION,
+                default=defaults.get(CONF_MIN_SUN_ELEVATION, DEFAULT_MIN_SUN_ELEVATION),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=-90,
+                    max=90,
+                    step=1,
+                    unit_of_measurement="°",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_TEMP_THRESHOLD,
+                default=defaults.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=-20,
+                    max=45,
+                    step=0.5,
+                    unit_of_measurement="°C",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_TEMP_SOURCE, default=defaults.get(CONF_TEMP_SOURCE)
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    device_class="temperature",
+                    multiple=True,
+                )
+            ),
+            vol.Optional(
+                CONF_USE_FORECAST_MAX_TEMP,
+                default=defaults.get(CONF_USE_FORECAST_MAX_TEMP, False),
+            ): bool,
+            vol.Optional(
+                CONF_TEMP_FORECAST_ENTITY, default=defaults.get(CONF_TEMP_FORECAST_ENTITY)
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    device_class="temperature",
+                    multiple=True,
+                )
+            ),
+            vol.Optional(
+                CONF_CLOUDY_CONDITIONS,
+                default=defaults.get(CONF_CLOUDY_CONDITIONS, DEFAULT_CLOUDY_CONDITIONS),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"label": "Sonnig", "value": "sunny"},
+                        {"label": "Klar (Nacht)", "value": "clear-night"},
+                        {"label": "Teilweise bewölkt", "value": "partlycloudy"},
+                        {"label": "Bewölkt", "value": "cloudy"},
+                        {"label": "Nebel", "value": "fog"},
+                        {"label": "Regen", "value": "rainy"},
+                        {"label": "Starker Regen", "value": "pouring"},
+                        {"label": "Schnee", "value": "snowy"},
+                        {"label": "Schneeregen", "value": "snowy-rainy"},
+                        {"label": "Hagel", "value": "hail"},
+                        {"label": "Gewitter", "value": "lightning"},
+                        {"label": "Gewitter mit Regen", "value": "lightning-rainy"},
+                        {"label": "Windig", "value": "windy"},
+                        {"label": "Windig, wechselhaft", "value": "windy-variant"},
+                        {"label": "Außergewöhnlich", "value": "exceptional"},
+                    ],
+                    multiple=True,
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            ),
+            vol.Optional(
+                CONF_POSITION_SUNNY_IN_ANGLE,
+                default=defaults.get(CONF_POSITION_SUNNY_IN_ANGLE, DEFAULT_POSITION_SUNNY_IN_ANGLE),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_POSITION_SUNNY_OUTSIDE_ANGLE,
+                default=defaults.get(
+                    CONF_POSITION_SUNNY_OUTSIDE_ANGLE, DEFAULT_POSITION_SUNNY_OUTSIDE_ANGLE
+                ),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_POSITION_CLOUDY,
+                default=defaults.get(CONF_POSITION_CLOUDY, DEFAULT_POSITION_CLOUDY),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_POSITION_EVENING,
+                default=defaults.get(CONF_POSITION_EVENING, DEFAULT_POSITION_EVENING),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_INVERT_POSITIONS,
+                default=defaults.get(CONF_INVERT_POSITIONS, False),
+            ): bool,
+            vol.Optional(
+                CONF_ENABLE_QUIET_MODE,
+                default=defaults.get(CONF_ENABLE_QUIET_MODE, False),
+            ): bool,
+            vol.Optional(
+                CONF_QUIET_START,
+                default=defaults.get(CONF_QUIET_START, "22:00:00"),
+            ): str,
+            vol.Optional(
+                CONF_QUIET_END,
+                default=defaults.get(CONF_QUIET_END, "07:00:00"),
+            ): str,
+            vol.Optional(
+                CONF_ENABLE_REEVALUATION,
+                default=defaults.get(CONF_ENABLE_REEVALUATION, True),
+            ): bool,
+            vol.Optional(
+                CONF_REEVALUATE_INTERVAL,
+                default=defaults.get(CONF_REEVALUATE_INTERVAL, DEFAULT_REEVALUATE_INTERVAL),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"label": "15 Minuten", "value": "15"},
+                        {"label": "30 Minuten", "value": "30"},
+                        {"label": "60 Minuten", "value": "60"},
+                    ],
+                    multiple=False,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional(
+                CONF_MIN_POSITION_CHANGE,
+                default=defaults.get(CONF_MIN_POSITION_CHANGE, DEFAULT_MIN_POSITION_CHANGE),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=100,
+                    step=1,
+                    unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_ENABLE_MANUAL_ACTIVITY_PAUSE,
+                default=defaults.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, True),
+            ): bool,
+            vol.Optional(
+                CONF_MANUAL_ACTIVITY_DURATION,
+                default=defaults.get(CONF_MANUAL_ACTIVITY_DURATION, DEFAULT_MANUAL_ACTIVITY_DURATION),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1,
+                    max=120,
+                    step=1,
+                    unit_of_measurement="Min",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(
+                CONF_TEST_MODE,
+                default=defaults.get(CONF_TEST_MODE, False),
+            ): bool,
+            vol.Optional(
+                CONF_TARGET_POSITION_HELPER,
+                default=defaults.get(CONF_TARGET_POSITION_HELPER),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="input_number",
+                    multiple=False,
+                )
+            ),
+            vol.Optional(
+                CONF_DECISION_HELPER,
+                default=defaults.get(CONF_DECISION_HELPER),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="input_text",
+                    multiple=False,
+                )
+            ),
+        }
+    )
+
+
 class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Simple Smart Cover."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Get the options flow for this handler."""
+        return SimpleSmartCoverOptionsFlowHandler(config_entry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -78,207 +352,31 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data=user_input,
             )
 
-        data_schema = vol.Schema(
-            {
-                vol.Required(CONF_NAME): str,
-                vol.Required(CONF_COVERS): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=COVER_DOMAIN,
-                        multiple=True,
-                    )
-                ),
-                vol.Required(CONF_WEATHER_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=WEATHER_DOMAIN,
-                        multiple=False,
-                    )
-                ),
-                vol.Optional(CONF_MORNING_TIME, default=DEFAULT_MORNING_TIME): str,
-                vol.Optional(CONF_ENABLE_MORNING, default=True): bool,
-                vol.Optional(CONF_ENABLE_EVENING, default=True): bool,
-                vol.Optional(
-                    CONF_WINDOW_ORIENTATION, default=DEFAULT_WINDOW_ORIENTATION
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=360,
-                        step=1,
-                        unit_of_measurement="°",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(
-                    CONF_SUN_ANGLE_TOLERANCE, default=DEFAULT_SUN_ANGLE_TOLERANCE
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=180,
-                        step=1,
-                        unit_of_measurement="°",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(
-                    CONF_MIN_SUN_ELEVATION, default=DEFAULT_MIN_SUN_ELEVATION
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=-90,
-                        max=90,
-                        step=1,
-                        unit_of_measurement="°",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(
-                    CONF_TEMP_THRESHOLD, default=DEFAULT_TEMP_THRESHOLD
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=-20,
-                        max=45,
-                        step=0.5,
-                        unit_of_measurement="°C",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(CONF_TEMP_SOURCE): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        device_class="temperature",
-                        multiple=True,
-                    )
-                ),
-                vol.Optional(CONF_USE_FORECAST_MAX_TEMP, default=False): bool,
-                vol.Optional(CONF_TEMP_FORECAST_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        device_class="temperature",
-                        multiple=True,
-                    )
-                ),
-                vol.Optional(
-                    CONF_CLOUDY_CONDITIONS, default=DEFAULT_CLOUDY_CONDITIONS
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            {"label": "Sonnig", "value": "sunny"},
-                            {"label": "Klar (Nacht)", "value": "clear-night"},
-                            {"label": "Teilweise bewölkt", "value": "partlycloudy"},
-                            {"label": "Bewölkt", "value": "cloudy"},
-                            {"label": "Nebel", "value": "fog"},
-                            {"label": "Regen", "value": "rainy"},
-                            {"label": "Starker Regen", "value": "pouring"},
-                            {"label": "Schnee", "value": "snowy"},
-                            {"label": "Schneeregen", "value": "snowy-rainy"},
-                            {"label": "Hagel", "value": "hail"},
-                            {"label": "Gewitter", "value": "lightning"},
-                            {"label": "Gewitter mit Regen", "value": "lightning-rainy"},
-                            {"label": "Windig", "value": "windy"},
-                            {"label": "Windig, wechselhaft", "value": "windy-variant"},
-                            {"label": "Außergewöhnlich", "value": "exceptional"},
-                        ],
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.LIST,
-                    )
-                ),
-                vol.Optional(
-                    CONF_POSITION_SUNNY_IN_ANGLE, default=DEFAULT_POSITION_SUNNY_IN_ANGLE
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=100,
-                        step=1,
-                        unit_of_measurement="%",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(
-                    CONF_POSITION_SUNNY_OUTSIDE_ANGLE,
-                    default=DEFAULT_POSITION_SUNNY_OUTSIDE_ANGLE,
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=100,
-                        step=1,
-                        unit_of_measurement="%",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(CONF_POSITION_CLOUDY, default=DEFAULT_POSITION_CLOUDY): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=100,
-                        step=1,
-                        unit_of_measurement="%",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(CONF_POSITION_EVENING, default=DEFAULT_POSITION_EVENING): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=100,
-                        step=1,
-                        unit_of_measurement="%",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(CONF_INVERT_POSITIONS, default=False): bool,
-                vol.Optional(CONF_ENABLE_QUIET_MODE, default=False): bool,
-                vol.Optional(CONF_QUIET_START, default="22:00:00"): str,
-                vol.Optional(CONF_QUIET_END, default="07:00:00"): str,
-                vol.Optional(CONF_ENABLE_REEVALUATION, default=True): bool,
-                vol.Optional(
-                    CONF_REEVALUATE_INTERVAL, default=DEFAULT_REEVALUATE_INTERVAL
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            {"label": "15 Minuten", "value": "15"},
-                            {"label": "30 Minuten", "value": "30"},
-                            {"label": "60 Minuten", "value": "60"},
-                        ],
-                        multiple=False,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(
-                    CONF_MIN_POSITION_CHANGE, default=DEFAULT_MIN_POSITION_CHANGE
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=100,
-                        step=1,
-                        unit_of_measurement="%",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, default=True): bool,
-                vol.Optional(
-                    CONF_MANUAL_ACTIVITY_DURATION,
-                    default=DEFAULT_MANUAL_ACTIVITY_DURATION,
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=1,
-                        max=120,
-                        step=1,
-                        unit_of_measurement="Min",
-                        mode=selector.NumberSelectorMode.SLIDER,
-                    )
-                ),
-                vol.Optional(CONF_TEST_MODE, default=False): bool,
-                vol.Optional(CONF_TARGET_POSITION_HELPER): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="input_number",
-                        multiple=False,
-                    )
-                ),
-                vol.Optional(CONF_DECISION_HELPER): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="input_text",
-                        multiple=False,
-                    )
-                ),
-            }
-        )
-
         return self.async_show_form(
             step_id="user",
-            data_schema=data_schema,
+            data_schema=_get_schema(),
             errors=errors,
+        )
+
+
+class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for Simple Smart Cover."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        # Merge saved data and options so existing values are pre-filled
+        defaults = {**self.config_entry.data, **self.config_entry.options}
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_get_schema(defaults),
         )
