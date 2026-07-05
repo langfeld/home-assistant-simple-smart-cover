@@ -33,9 +33,7 @@
           "min_position_change": "Minimale Positionsänderung",
           "enable_manual_activity_pause": "Pause nach manueller Bedienung",
           "manual_activity_duration": "Dauer der manuellen Pause",
-          "test_mode": "Testmodus (keine Bewegung)",
-          "target_position_helper": "Helper für Zielposition (optional)",
-          "decision_helper": "Helper für Entscheidungsgrund (optional)"
+          "test_mode": "Testmodus (keine Bewegung)"
         }
       }
     }
@@ -73,9 +71,7 @@
           "min_position_change": "Minimale Positionsänderung",
           "enable_manual_activity_pause": "Pause nach manueller Bedienung",
           "manual_activity_duration": "Dauer der manuellen Pause",
-          "test_mode": "Testmodus (keine Bewegung)",
-          "target_position_helper": "Helper für Zielposition (optional)",
-          "decision_helper": "Helper für Entscheidungsgrund (optional)"
+          "test_mode": "Testmodus (keine Bewegung)"
         }
       }
     }

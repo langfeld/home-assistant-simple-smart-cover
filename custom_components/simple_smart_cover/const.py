@@ -30,8 +30,6 @@ CONF_MIN_POSITION_CHANGE = "min_position_change"
 CONF_ENABLE_MANUAL_ACTIVITY_PAUSE = "enable_manual_activity_pause"
 CONF_MANUAL_ACTIVITY_DURATION = "manual_activity_duration"
 CONF_TEST_MODE = "test_mode"
-CONF_TARGET_POSITION_HELPER = "target_position_helper"
-CONF_DECISION_HELPER = "decision_helper"
 
 DEFAULT_MORNING_TIME = "07:00:00"
 DEFAULT_WINDOW_ORIENTATION = 180

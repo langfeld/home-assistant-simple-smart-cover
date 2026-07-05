@@ -43,8 +43,6 @@ from .const import (
     CONF_ENABLE_MANUAL_ACTIVITY_PAUSE,
     CONF_MANUAL_ACTIVITY_DURATION,
     CONF_TEST_MODE,
-    CONF_TARGET_POSITION_HELPER,
-    CONF_DECISION_HELPER,
     DEFAULT_MORNING_TIME,
     DEFAULT_WINDOW_ORIENTATION,
     DEFAULT_SUN_ANGLE_TOLERANCE,
@@ -148,7 +146,7 @@ def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     device_class="temperature",
-                    multiple=True,
+                    multiple=False,
                 )
             ),
             vol.Optional(
@@ -160,7 +158,7 @@ def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     device_class="temperature",
-                    multiple=True,
+                    multiple=False,
                 )
             ),
             vol.Optional(
@@ -305,24 +303,6 @@ def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_TEST_MODE,
                 default=defaults.get(CONF_TEST_MODE, False),
             ): bool,
-            vol.Optional(
-                CONF_TARGET_POSITION_HELPER,
-                default=defaults.get(CONF_TARGET_POSITION_HELPER),
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain="input_number",
-                    multiple=False,
-                )
-            ),
-            vol.Optional(
-                CONF_DECISION_HELPER,
-                default=defaults.get(CONF_DECISION_HELPER),
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain="input_text",
-                    multiple=False,
-                )
-            ),
         }
     )
 
