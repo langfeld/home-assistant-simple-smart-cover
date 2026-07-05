@@ -27,8 +27,11 @@ home-assistant-simple-smart-cover/
 │   ├── cover.py             # Virtual cover entity + decision logic
 │   ├── sensor.py            # Target position & decision reason sensors
 │   ├── trigger.py           # Time/sun-based re-evaluation triggers
-│   └── translations/de.json # German UI translations
+│   ├── translations/de.json # German UI translations
+│   ├── icon.png             # Brand icon for HA integration card
+│   └── logo.png             # Larger brand icon
 ├── hacs.json                # HACS metadata
+├── icon.svg                 # Source SVG for the brand icon
 ├── .gitignore
 └── README.md
 ```

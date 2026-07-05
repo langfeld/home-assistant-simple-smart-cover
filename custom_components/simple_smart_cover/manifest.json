@@ -2,6 +2,7 @@
   "domain": "simple_smart_cover",
   "name": "Simple Smart Cover",
   "codeowners": [],
+  "icon": "mdi:window-shutter",
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/langfeld/home-assistant-simple-smart-cover",
