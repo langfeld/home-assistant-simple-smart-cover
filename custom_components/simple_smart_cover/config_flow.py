@@ -67,6 +67,20 @@ def _optional_default(defaults: dict[str, Any], key: str) -> dict[str, Any]:
     return {}
 
 
+def _optional_entities(keys: list[str], user_input: dict[str, Any]) -> None:
+    """Set optional keys to None if they were cleared and omitted by voluptuous."""
+    for key in keys:
+        if key not in user_input:
+            user_input[key] = None
+
+
+# Optional fields that must be explicitly nulled when cleared by the user.
+_OPTIONAL_KEYS = [
+    CONF_TEMP_SOURCE,
+    CONF_TEMP_FORECAST_ENTITY,
+]
+
+
 def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     """Return the schema used by both config and options flow."""
     defaults = defaults or {}
@@ -335,6 +349,7 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            _optional_entities(_OPTIONAL_KEYS, user_input)
             return self.async_create_entry(
                 title=user_input[CONF_NAME],
                 data=user_input,
@@ -350,15 +365,12 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Simple Smart Cover."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
+            _optional_entities(_OPTIONAL_KEYS, user_input)
             return self.async_create_entry(title="", data=user_input)
 
         # Merge saved data and options so existing values are pre-filled
