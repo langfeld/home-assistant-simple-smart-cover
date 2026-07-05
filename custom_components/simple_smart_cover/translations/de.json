@@ -1,0 +1,40 @@
+{
+  "title": "Simple Smart Cover",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Simple Smart Cover einrichten",
+        "description": "Richte eine intelligente Rollladensteuerung basierend auf Wetter und Sonnenstand ein.",
+        "data": {
+          "name": "Name der Gruppe",
+          "covers": "Rollläden",
+          "weather_entity": "Wetter-Entity",
+          "morning_time": "Morgendliche Hochfahrzeit",
+          "enable_morning": "Morgens aktivieren",
+          "enable_evening": "Abends aktivieren",
+          "window_orientation": "Fenster-Ausrichtung (Azimuth)",
+          "sun_angle_tolerance": "Toleranzwinkel links/rechts",
+          "min_sun_elevation": "Minimale Sonnenhöhe",
+          "temp_threshold": "Temperatur-Schwelle",
+          "temp_source": "Temperatur-Sensor (optional)",
+          "use_forecast_max_temp": "Tageshöchsttemperatur verwenden",
+          "temp_forecast_entity": "Tageshöchsttemperatur-Sensor (optional)",
+          "cloudy_conditions": "Bewölkte Wetterbedingungen",
+          "position_sunny_in_angle": "Position bei Sonne im Winkel & warm",
+          "position_sunny_outside_angle": "Position bei Sonne außerhalb oder zu kalt",
+          "position_cloudy": "Position bei bewölktem Wetter",
+          "position_evening": "Abend-Position",
+          "invert_positions": "Positionen umkehren",
+          "enable_quiet_mode": "Ruhemodus aktivieren",
+          "quiet_start": "Ruhemodus Beginn",
+          "quiet_end": "Ruhemodus Ende",
+          "enable_reevaluation": "Regelmäßige Neubewertung aktivieren",
+          "reevaluate_interval": "Neubewertungsintervall",
+          "min_position_change": "Minimale Positionsänderung",
+          "enable_manual_activity_pause": "Pause nach manueller Bedienung",
+          "manual_activity_duration": "Dauer der manuellen Pause"
+        }
+      }
+    }
+  }
+}
