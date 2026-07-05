@@ -42,6 +42,9 @@ from .const import (
     CONF_MIN_POSITION_CHANGE,
     CONF_ENABLE_MANUAL_ACTIVITY_PAUSE,
     CONF_MANUAL_ACTIVITY_DURATION,
+    CONF_TEST_MODE,
+    CONF_TARGET_POSITION_HELPER,
+    CONF_DECISION_HELPER,
     DEFAULT_MORNING_TIME,
     DEFAULT_WINDOW_ORIENTATION,
     DEFAULT_SUN_ANGLE_TOLERANCE,
@@ -256,6 +259,19 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         step=1,
                         unit_of_measurement="Min",
                         mode=selector.NumberSelectorMode.SLIDER,
+                    )
+                ),
+                vol.Optional(CONF_TEST_MODE, default=False): bool,
+                vol.Optional(CONF_TARGET_POSITION_HELPER): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="input_number",
+                        multiple=False,
+                    )
+                ),
+                vol.Optional(CONF_DECISION_HELPER): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="input_text",
+                        multiple=False,
                     )
                 ),
             }
