@@ -365,9 +365,10 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Simple Smart Cover."""
 
-    def __init__(self) -> None:
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         super().__init__()
+        self._config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -378,7 +379,7 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         # Merge saved data and options so existing values are pre-filled
-        defaults = {**self.config_entry.data, **self.config_entry.options}
+        defaults = {**self._config_entry.data, **self._config_entry.options}
 
         return self.async_show_form(
             step_id="init",
