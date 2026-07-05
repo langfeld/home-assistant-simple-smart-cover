@@ -44,7 +44,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if needs_update:
         hass.config_entries.async_update_entry(entry, data=data)
 
-    hass.data[DOMAIN][entry.entry_id] = entry.data
+    hass.data[DOMAIN][entry.entry_id] = {
+        "config_entry": entry,
+        "cover": None,
+    }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

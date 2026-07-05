@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.cover import (
@@ -111,6 +111,8 @@ class SimpleSmartCoverEntity(CoverEntity):
         self._target_position = 100
         self._decision_reason = "unknown"
         self._should_move = False
+        self._last_sent_positions: dict[str, tuple[datetime, int]] = {}
+        self._manual_pause_until: datetime | None = None
 
     @property
     def _data(self) -> dict[str, Any]:
@@ -120,6 +122,7 @@ class SimpleSmartCoverEntity(CoverEntity):
     async def async_added_to_hass(self) -> None:
         """Register update listener for options changes."""
         await super().async_added_to_hass()
+        self.hass.data[DOMAIN][self._entry_id]["cover"] = self
         self.async_on_remove(
             self._config_entry.add_update_listener(self._async_update_options)
         )
@@ -200,22 +203,75 @@ class SimpleSmartCoverEntity(CoverEntity):
             return quiet_start <= now_str <= quiet_end
         return now_str >= quiet_start or now_str <= quiet_end
 
+    def is_manual_pause_active(self) -> bool:
+        """Return whether manual activity pause is currently active."""
+        if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
+            return False
+        if self._manual_pause_until is None:
+            return False
+        return dt_util.now() < self._manual_pause_until
+
+    def get_pause_remaining_minutes(self) -> int | None:
+        """Return remaining pause minutes, or None if not paused."""
+        if not self.is_manual_pause_active():
+            return None
+        remaining = self._manual_pause_until - dt_util.now()
+        return max(0, int(remaining.total_seconds() // 60))
+
+    def update_pause_state(self) -> None:
+        """Refresh manual activity pause state. Call when cover states change."""
+        self._manual_activity_detected()
+
     def _manual_activity_detected(self) -> bool:
         """Check if any cover was manually moved recently."""
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
+            self._manual_pause_until = None
             return False
 
         duration_minutes = self._data.get(
             CONF_MANUAL_ACTIVITY_DURATION, DEFAULT_MANUAL_ACTIVITY_DURATION
         )
-        threshold = dt_util.now() - timedelta(minutes=duration_minutes)
+        pause_duration = timedelta(minutes=duration_minutes)
+        now = dt_util.now()
+        grace_period = timedelta(seconds=30)
 
+        manual_move_detected = False
         for cover in self._data.get(CONF_COVERS, []):
             state = self.hass.states.get(cover)
             if state is None:
                 continue
-            if state.last_changed > threshold:
-                return True
+
+            last_changed = state.last_changed
+            current_pos = state.attributes.get("current_position")
+
+            # If we sent a command, ignore changes shortly after it and
+            # consider it manual only if the position deviates from what
+            # we requested.
+            last_sent = self._last_sent_positions.get(cover)
+            if last_sent is not None:
+                sent_time, sent_pos = last_sent
+                if last_changed > sent_time + grace_period:
+                    try:
+                        if current_pos is not None and int(current_pos) != sent_pos:
+                            manual_move_detected = True
+                            break
+                    except (ValueError, TypeError):
+                        pass
+            else:
+                # No record of our own command; fall back to raw last_changed.
+                if last_changed > now - pause_duration:
+                    manual_move_detected = True
+                    break
+
+        if manual_move_detected:
+            self._manual_pause_until = now + pause_duration
+            return True
+
+        # Keep pause alive if it was started recently.
+        if self._manual_pause_until is not None and now < self._manual_pause_until:
+            return True
+
+        self._manual_pause_until = None
         return False
 
     def _get_temperature(self) -> float:
@@ -377,6 +433,7 @@ class SimpleSmartCoverEntity(CoverEntity):
         self.async_write_ha_state()
 
         if self._should_move and not self._data.get(CONF_TEST_MODE, False):
+            now = dt_util.now()
             for cover in self._data.get(CONF_COVERS, []):
                 await self.hass.services.async_call(
                     "cover",
@@ -384,3 +441,4 @@ class SimpleSmartCoverEntity(CoverEntity):
                     {"entity_id": cover, "position": new_position},
                     blocking=False,
                 )
+                self._last_sent_positions[cover] = (now, new_position)
