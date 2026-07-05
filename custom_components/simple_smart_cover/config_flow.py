@@ -59,6 +59,14 @@ from .const import (
 )
 
 
+def _optional_default(defaults: dict[str, Any], key: str) -> dict[str, Any]:
+    """Return default kwargs for optional entity selectors."""
+    value = defaults.get(key)
+    if value:
+        return {"default": value}
+    return {}
+
+
 def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     """Return the schema used by both config and options flow."""
     defaults = defaults or {}
@@ -142,7 +150,7 @@ def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 )
             ),
             vol.Optional(
-                CONF_TEMP_SOURCE, default=defaults.get(CONF_TEMP_SOURCE)
+                CONF_TEMP_SOURCE, **_optional_default(defaults, CONF_TEMP_SOURCE)
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     device_class="temperature",
@@ -154,7 +162,7 @@ def _get_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=defaults.get(CONF_USE_FORECAST_MAX_TEMP, False),
             ): bool,
             vol.Optional(
-                CONF_TEMP_FORECAST_ENTITY, default=defaults.get(CONF_TEMP_FORECAST_ENTITY)
+                CONF_TEMP_FORECAST_ENTITY, **_optional_default(defaults, CONF_TEMP_FORECAST_ENTITY)
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     device_class="temperature",

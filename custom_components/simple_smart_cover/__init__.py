@@ -27,6 +27,23 @@ def is_valid_time(value: str) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Simple Smart Cover from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+
+    # Migrate old config keys to new names
+    data = dict(entry.data)
+    migration_map = {
+        "sunny_in_angle": "position_sunny_in_angle",
+        "sunny_outside_angle": "position_sunny_outside_angle",
+        "cloudy": "position_cloudy",
+        "evening": "position_evening",
+    }
+    needs_update = False
+    for old_key, new_key in migration_map.items():
+        if old_key in data and new_key not in data:
+            data[new_key] = data.pop(old_key)
+            needs_update = True
+    if needs_update:
+        hass.config_entries.async_update_entry(entry, data=data)
+
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
