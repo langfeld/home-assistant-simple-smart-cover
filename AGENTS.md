@@ -43,6 +43,7 @@ home-assistant-simple-smart-cover/
 - Optional entity selectors (e.g. temperature sensors) must be nulled on clear; use `_optional_entities()` before saving.
 - Cover entity reads `{**config_entry.data, **config_entry.options}` so option changes take effect immediately.
 - Evening state is persisted on the cover entity (`_force_evening`) so re-evaluation intervals do not switch back to daytime logic after sunset.
+- Manual activity pause is detected by listening to real cover state changes. Movements that occur shortly after an integration command or match the requested position are ignored as own movements.
 - Test mode calculates positions but never calls `cover.set_cover_position`.
 
 ## Known Issues / TODOs

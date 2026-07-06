@@ -114,6 +114,7 @@ class SimpleSmartCoverEntity(CoverEntity):
         self._last_sent_positions: dict[str, tuple[datetime, int]] = {}
         self._manual_pause_until: datetime | None = None
         self._force_evening = False
+        self._startup_time = dt_util.now()
 
     @property
     def _data(self) -> dict[str, Any]:
@@ -121,18 +122,72 @@ class SimpleSmartCoverEntity(CoverEntity):
         return {**self._config_entry.data, **self._config_entry.options}
 
     async def async_added_to_hass(self) -> None:
-        """Register update listener for options changes."""
+        """Register update listener and cover state listeners."""
         await super().async_added_to_hass()
         self.hass.data[DOMAIN][self._entry_id]["cover"] = self
         self.async_on_remove(
             self._config_entry.add_update_listener(self._async_update_options)
         )
 
+        # Listen to real cover state changes to detect manual/external moves.
+        covers = self._data.get(CONF_COVERS, [])
+        if covers:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass, covers, self._async_cover_state_changed
+                )
+            )
+
     async def _async_update_options(
         self, hass: HomeAssistant, config_entry: ConfigEntry
     ) -> None:
         """Handle options update."""
         await self.async_update_position()
+
+    @callback
+    def _async_cover_state_changed(self, event) -> None:
+        """Detect manual or external cover movements."""
+        if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
+            return
+
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+
+        now = dt_util.now()
+        # Ignore state changes shortly after startup to avoid false positives
+        # while HA is still restoring states.
+        if now < self._startup_time + timedelta(seconds=60):
+            return
+
+        entity_id = new_state.entity_id
+        grace_period = timedelta(seconds=120)
+        position_tolerance = 3  # percent
+
+        last_sent = self._last_sent_positions.get(entity_id)
+        if last_sent is not None:
+            sent_time, sent_pos = last_sent
+            if now < sent_time + grace_period:
+                # Movement shortly after our own command: assume it is ours.
+                return
+            try:
+                current_pos = int(new_state.attributes.get("current_position", -1))
+                if current_pos >= 0 and abs(current_pos - sent_pos) <= position_tolerance:
+                    # Position matches what we requested: not a manual move.
+                    return
+            except (ValueError, TypeError):
+                pass
+
+        # Movement was not initiated by us: start manual activity pause.
+        duration_minutes = self._data.get(
+            CONF_MANUAL_ACTIVITY_DURATION, DEFAULT_MANUAL_ACTIVITY_DURATION
+        )
+        self._manual_pause_until = now + timedelta(minutes=duration_minutes)
+        _LOGGER.debug(
+            "Manual activity detected on %s, pausing automation until %s",
+            entity_id,
+            self._manual_pause_until,
+        )
 
     def set_evening_state(self, is_evening: bool) -> None:
         """Set whether evening mode should be forced."""
@@ -228,52 +283,15 @@ class SimpleSmartCoverEntity(CoverEntity):
         self._manual_activity_detected()
 
     def _manual_activity_detected(self) -> bool:
-        """Check if any cover was manually moved recently."""
+        """Return whether manual activity pause is currently active."""
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             self._manual_pause_until = None
             return False
 
-        duration_minutes = self._data.get(
-            CONF_MANUAL_ACTIVITY_DURATION, DEFAULT_MANUAL_ACTIVITY_DURATION
-        )
-        pause_duration = timedelta(minutes=duration_minutes)
-        now = dt_util.now()
-        grace_period = timedelta(seconds=30)
+        if self._manual_pause_until is None:
+            return False
 
-        manual_move_detected = False
-        for cover in self._data.get(CONF_COVERS, []):
-            state = self.hass.states.get(cover)
-            if state is None:
-                continue
-
-            last_changed = state.last_changed
-            current_pos = state.attributes.get("current_position")
-
-            # If we sent a command, ignore changes shortly after it and
-            # consider it manual only if the position deviates from what
-            # we requested.
-            last_sent = self._last_sent_positions.get(cover)
-            if last_sent is not None:
-                sent_time, sent_pos = last_sent
-                if last_changed > sent_time + grace_period:
-                    try:
-                        if current_pos is not None and int(current_pos) != sent_pos:
-                            manual_move_detected = True
-                            break
-                    except (ValueError, TypeError):
-                        pass
-            else:
-                # No record of our own command; fall back to raw last_changed.
-                if last_changed > now - pause_duration:
-                    manual_move_detected = True
-                    break
-
-        if manual_move_detected:
-            self._manual_pause_until = now + pause_duration
-            return True
-
-        # Keep pause alive if it was started recently.
-        if self._manual_pause_until is not None and now < self._manual_pause_until:
+        if dt_util.now() < self._manual_pause_until:
             return True
 
         self._manual_pause_until = None
