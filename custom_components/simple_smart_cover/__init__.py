@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .trigger import async_setup_triggers
 
-PLATFORMS = [Platform.BUTTON, Platform.COVER, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [Platform.BUTTON, Platform.COVER, Platform.SENSOR]
 
 
 def is_valid_time(value: str) -> bool:
