@@ -42,6 +42,7 @@ home-assistant-simple-smart-cover/
 - Config flow driven by `voluptuous` schemas.
 - Options flow allows editing the entry afterwards.
 - Config flow supports duplicating an existing group via `duplicate_select` / `duplicate_configure` steps.
+- All entities of a config entry share the same `DeviceInfo`, so Home Assistant groups them into one device page per cover group.
 - Optional entity selectors (e.g. temperature sensors) must be nulled on clear; use `_optional_entities()` before saving.
 - Cover entity reads `{**config_entry.data, **config_entry.options}` so option changes take effect immediately.
 - Evening state is persisted on the cover entity (`_force_evening`) so re-evaluation intervals do not switch back to daytime logic after sunset.

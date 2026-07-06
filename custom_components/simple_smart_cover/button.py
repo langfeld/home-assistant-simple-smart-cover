@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -30,8 +31,19 @@ class SimpleSmartCoverPauseResetButton(ButtonEntity):
         """Initialize the button."""
         self.hass = hass
         self._entry_id = config_entry.entry_id
+        self._group_name = config_entry.data['name']
         self._attr_name = f"{config_entry.data['name']} Pause zurücksetzen"
         self._attr_unique_id = f"{config_entry.entry_id}_pause_reset"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this cover group."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self._group_name,
+            manufacturer="Simple Smart Cover",
+            model="Cover Group",
+        )
 
     def _get_cover(self):
         """Return the cover entity for this config entry."""

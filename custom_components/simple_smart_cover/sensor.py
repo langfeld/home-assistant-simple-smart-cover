@@ -6,6 +6,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 
@@ -45,9 +46,20 @@ class SimpleSmartCoverTargetPositionSensor(SensorEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._entry_id = config_entry.entry_id
+        self._group_name = config_entry.data['name']
         self._attr_name = f"{config_entry.data['name']} Zielposition"
         self._attr_unique_id = f"{config_entry.entry_id}_target_position"
         self._cover_entity_id = f"cover.{config_entry.data['name'].lower().replace(' ', '_')}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this cover group."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self._group_name,
+            manufacturer="Simple Smart Cover",
+            model="Cover Group",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Register state change listener."""
@@ -76,9 +88,20 @@ class SimpleSmartCoverDecisionSensor(SensorEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._entry_id = config_entry.entry_id
+        self._group_name = config_entry.data['name']
         self._attr_name = f"{config_entry.data['name']} Entscheidung"
         self._attr_unique_id = f"{config_entry.entry_id}_decision"
         self._cover_entity_id = f"cover.{config_entry.data['name'].lower().replace(' ', '_')}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this cover group."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self._group_name,
+            manufacturer="Simple Smart Cover",
+            model="Cover Group",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Register state change listener."""
@@ -107,9 +130,20 @@ class SimpleSmartCoverPauseSensor(BinarySensorEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._entry_id = config_entry.entry_id
+        self._group_name = config_entry.data['name']
         self._attr_name = f"{config_entry.data['name']} Pause aktiv"
         self._attr_unique_id = f"{config_entry.entry_id}_pause_active"
         self._cover_entity_id = f"cover.{config_entry.data['name'].lower().replace(' ', '_')}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this cover group."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self._group_name,
+            manufacturer="Simple Smart Cover",
+            model="Cover Group",
+        )
 
     @property
     def is_on(self) -> bool | None:
@@ -156,9 +190,20 @@ class SimpleSmartCoverPauseRemainingSensor(SensorEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._entry_id = config_entry.entry_id
+        self._group_name = config_entry.data['name']
         self._attr_name = f"{config_entry.data['name']} Pause verbleibend"
         self._attr_unique_id = f"{config_entry.entry_id}_pause_remaining"
         self._cover_entity_id = f"cover.{config_entry.data['name'].lower().replace(' ', '_')}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this cover group."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self._group_name,
+            manufacturer="Simple Smart Cover",
+            model="Cover Group",
+        )
 
     @property
     def native_value(self) -> int | None:

@@ -12,6 +12,7 @@ from homeassistant.components.cover import (
     CoverEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.const import (
     CONF_NAME,
     STATE_UNAVAILABLE,
@@ -105,6 +106,7 @@ class SimpleSmartCoverEntity(CoverEntity):
         self.hass = hass
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
+        self._group_name = name
         self._attr_name = name
         self._attr_unique_id = f"{config_entry.entry_id}_cover"
 
@@ -120,6 +122,16 @@ class SimpleSmartCoverEntity(CoverEntity):
     def _data(self) -> dict[str, Any]:
         """Return merged config entry data and options."""
         return {**self._config_entry.data, **self._config_entry.options}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this cover group."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self._group_name,
+            manufacturer="Simple Smart Cover",
+            model="Cover Group",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Register update listener and cover state listeners."""
