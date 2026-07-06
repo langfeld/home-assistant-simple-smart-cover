@@ -278,6 +278,12 @@ class SimpleSmartCoverEntity(CoverEntity):
         remaining = self._manual_pause_until - dt_util.now()
         return max(0, int(remaining.total_seconds() // 60))
 
+    def reset_manual_pause(self) -> None:
+        """Reset the manual activity pause immediately."""
+        self._manual_pause_until = None
+        _LOGGER.debug("Manual activity pause reset for %s", self._attr_name)
+        self.async_write_ha_state()
+
     def update_pause_state(self) -> None:
         """Refresh manual activity pause state. Call when cover states change."""
         self._manual_activity_detected()
@@ -403,11 +409,27 @@ class SimpleSmartCoverEntity(CoverEntity):
             return "sunny_outside_angle"
         return "sunny_in_angle"
 
+    def _is_automation_enabled(self) -> bool:
+        """Return whether automation is enabled via the switch entity."""
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self._entry_id)
+        if entry_data is None:
+            return True
+        switch = entry_data.get("switch")
+        if switch is None:
+            return True
+        return switch.is_on
+
     async def async_update_position(self, is_evening: bool | None = None) -> None:
         """Update target position and move covers if needed."""
         if is_evening is not None:
             self._force_evening = is_evening
         is_evening = self._force_evening
+
+        if not self._is_automation_enabled():
+            self._decision_reason = "automation_disabled"
+            self._should_move = False
+            self.async_write_ha_state()
+            return
 
         if self._is_quiet_time():
             self._decision_reason = "quiet_time"

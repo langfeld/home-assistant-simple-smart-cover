@@ -13,6 +13,8 @@ One config entry = one cover group. The integration creates:
 - A `sensor` for the decision reason
 - A `binary_sensor` showing whether the manual activity pause is active
 - A `sensor` showing the remaining pause minutes
+- A `switch` to enable/disable automation for the group
+- A `button` to reset the manual activity pause immediately
 
 No manual Helpers are required; values are exposed as native integration sensors.
 
@@ -26,6 +28,8 @@ home-assistant-simple-smart-cover/
 │   ├── const.py             # All config keys and defaults
 │   ├── cover.py             # Virtual cover entity + decision logic
 │   ├── sensor.py            # Target position & decision reason sensors
+│   ├── switch.py            # Automation enable/disable switch
+│   ├── button.py            # Pause reset button
 │   ├── trigger.py           # Time/sun-based re-evaluation triggers
 │   └── translations/de.json # German UI translations
 ├── hacs.json                # HACS metadata
