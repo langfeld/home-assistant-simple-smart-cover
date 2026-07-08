@@ -7,10 +7,8 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import SUN_EVENT_SUNSET
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import (
-    async_track_state_change_event,
     async_track_time_change,
     async_track_point_in_utc_time,
 )
@@ -75,22 +73,42 @@ async def async_setup_triggers(
                 async_track_time_change(hass, _reevaluate_trigger, minute="0")
             )
 
-    # Sunset trigger
+    # Sunset trigger: schedule at the actual next_setting time.
+    # Using sun.sun's "rising" attribute is not reliable because it is False
+    # for the whole afternoon, causing premature evening activation.
     if data.get(CONF_ENABLE_EVENING, True):
+        sunset_remove = [None]
 
         @callback
-        def _sun_event(event):
-            if event.data.get("new_state") is None:
-                return
-            new_state = event.data["new_state"]
-            rising = new_state.attributes.get("rising")
-            # rising=False means sun is setting
-            if rising is False:
-                cover_entity.set_evening_state(True)
-                hass.async_create_task(cover_entity.async_update_position())
+        def _sunset_trigger(now):
+            cover_entity.set_evening_state(True)
+            hass.async_create_task(cover_entity.async_update_position())
+            _schedule_next_sunset()
 
+        @callback
+        def _schedule_next_sunset():
+            sun_state = hass.states.get("sun.sun")
+            if sun_state is None:
+                return
+            next_setting = sun_state.attributes.get("next_setting")
+            if next_setting is None:
+                return
+            if isinstance(next_setting, str):
+                next_setting = dt_util.parse_datetime(next_setting)
+            if next_setting is None:
+                return
+            next_setting = dt_util.as_utc(next_setting)
+            if next_setting < dt_util.utcnow():
+                return
+            if sunset_remove[0] is not None:
+                sunset_remove[0]()
+            sunset_remove[0] = async_track_point_in_utc_time(
+                hass, _sunset_trigger, next_setting
+            )
+
+        _schedule_next_sunset()
         remove_callbacks.append(
-            async_track_state_change_event(hass, "sun.sun", _sun_event)
+            lambda: sunset_remove[0]() if sunset_remove[0] is not None else None
         )
 
     # Store remove callbacks on the entry
