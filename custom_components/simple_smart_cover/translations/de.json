@@ -1,6 +1,10 @@
 {
   "title": "Simple Smart Cover",
   "config": {
+    "error": {
+      "invalid_time": "Ungültiges Zeitformat. Bitte HH:MM:SS verwenden.",
+      "name_exists": "Eine Gruppe mit diesem Namen existiert bereits."
+    },
     "step": {
       "user": {
         "title": "Simple Smart Cover einrichten",
@@ -141,6 +145,10 @@
     }
   },
   "options": {
+    "error": {
+      "invalid_time": "Ungültiges Zeitformat. Bitte HH:MM:SS verwenden.",
+      "name_exists": "Eine Gruppe mit diesem Namen existiert bereits."
+    },
     "step": {
       "init": {
         "title": "Simple Smart Cover bearbeiten",

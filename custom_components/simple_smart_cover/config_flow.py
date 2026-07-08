@@ -56,7 +56,11 @@ from .const import (
     DEFAULT_REEVALUATE_INTERVAL,
     DEFAULT_MIN_POSITION_CHANGE,
     DEFAULT_MANUAL_ACTIVITY_DURATION,
+    is_valid_time,
 )
+
+
+_TIME_FIELDS = (CONF_MORNING_TIME, CONF_QUIET_START, CONF_QUIET_END)
 
 
 def _optional_default(defaults: dict[str, Any], key: str) -> dict[str, Any]:
@@ -81,18 +85,38 @@ _OPTIONAL_KEYS = [
 ]
 
 
+def _validate_time_fields(user_input: dict[str, Any]) -> dict[str, str]:
+    """Validate time-format fields. Return a dict of field -> error_key."""
+    errors: dict[str, str] = {}
+    for time_key in _TIME_FIELDS:
+        value = user_input.get(time_key)
+        if value and not is_valid_time(value):
+            errors[time_key] = "invalid_time"
+    return errors
+
+
 def _get_existing_entries(hass: HomeAssistant) -> list[config_entries.ConfigEntry]:
     """Return existing Simple Smart Cover config entries."""
     return hass.config_entries.async_entries(DOMAIN)
+
+
+def _get_existing_names(hass: HomeAssistant, exclude_entry_id: str | None = None) -> set[str]:
+    """Return names already used by other Simple Smart Cover entries."""
+    existing_names: set[str] = set()
+    for e in _get_existing_entries(hass):
+        if e.entry_id == exclude_entry_id:
+            continue
+        name = e.data.get(CONF_NAME)
+        if name:
+            existing_names.add(name)
+    return existing_names
 
 
 def _ensure_unique_name(
     hass: HomeAssistant, name: str, suffix: str = "Kopie"
 ) -> str:
     """Ensure the config entry name is unique."""
-    existing_names = {
-        e.data.get(CONF_NAME) for e in _get_existing_entries(hass) if CONF_NAME in e.data
-    }
+    existing_names = _get_existing_names(hass)
 
     if name not in existing_names:
         return name
@@ -433,11 +457,18 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            _optional_entities(_OPTIONAL_KEYS, user_input)
-            return self.async_create_entry(
-                title=user_input[CONF_NAME],
-                data=user_input,
-            )
+            errors = _validate_time_fields(user_input)
+
+            # Validate unique name
+            if user_input[CONF_NAME] in _get_existing_names(self.hass):
+                errors[CONF_NAME] = "name_exists"
+
+            if not errors:
+                _optional_entities(_OPTIONAL_KEYS, user_input)
+                return self.async_create_entry(
+                    title=user_input[CONF_NAME],
+                    data=user_input,
+                )
 
         return self.async_show_form(
             step_id="create_new",
@@ -557,9 +588,32 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            _optional_entities(_OPTIONAL_KEYS, user_input)
-            return self.async_create_entry(title="", data=user_input)
+            errors = _validate_time_fields(user_input)
+
+            # Validate unique name (excluding this entry)
+            name = user_input.get(CONF_NAME)
+            if name and name in _get_existing_names(
+                self.hass, exclude_entry_id=self._config_entry.entry_id
+            ):
+                errors[CONF_NAME] = "name_exists"
+
+            if not errors:
+                # Handle name change: update title and data, keep rest as options
+                if name is not None and name != self._config_entry.title:
+                    self.hass.config_entries.async_update_entry(
+                        self._config_entry,
+                        title=name,
+                        data={**self._config_entry.data, CONF_NAME: name},
+                    )
+
+                # CONF_NAME is handled above; remove it from options data
+                user_input.pop(CONF_NAME, None)
+
+                _optional_entities(_OPTIONAL_KEYS, user_input)
+                return self.async_create_entry(title="", data=user_input)
 
         # Merge saved data and options so existing values are pre-filled
         defaults = {**self._config_entry.data, **self._config_entry.options}
@@ -567,4 +621,5 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=_get_schema(defaults),
+            errors=errors,
         )

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -15,6 +14,7 @@ from homeassistant.helpers.event import (
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    DOMAIN,
     CONF_ENABLE_MORNING,
     CONF_ENABLE_EVENING,
     CONF_ENABLE_REEVALUATION,
@@ -25,13 +25,15 @@ from .cover import SimpleSmartCoverEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+_SUNSET_RETRY_INTERVAL = timedelta(minutes=5)
+
 
 async def async_setup_triggers(
     hass: HomeAssistant, entry: ConfigEntry, cover_entity: SimpleSmartCoverEntity
 ) -> None:
     """Set up time and sun triggers for the cover entity."""
-    data = entry.data
-    remove_callbacks = []
+    data = {**entry.data, **entry.options}
+    remove_callbacks: list = []
 
     # Morning time trigger
     if data.get(CONF_ENABLE_MORNING, True):
@@ -77,7 +79,7 @@ async def async_setup_triggers(
     # Using sun.sun's "rising" attribute is not reliable because it is False
     # for the whole afternoon, causing premature evening activation.
     if data.get(CONF_ENABLE_EVENING, True):
-        sunset_remove = [None]
+        sunset_remove: list = [None]
 
         @callback
         def _sunset_trigger(now):
@@ -89,6 +91,15 @@ async def async_setup_triggers(
         def _schedule_next_sunset():
             sun_state = hass.states.get("sun.sun")
             if sun_state is None:
+                _LOGGER.warning(
+                    "sun.sun not available, retrying sunset scheduling in %s minutes",
+                    _SUNSET_RETRY_INTERVAL.total_seconds() / 60,
+                )
+                if sunset_remove[0] is not None:
+                    sunset_remove[0]()
+                sunset_remove[0] = async_track_point_in_utc_time(
+                    hass, _sunset_retry, dt_util.utcnow() + _SUNSET_RETRY_INTERVAL
+                )
                 return
             next_setting = sun_state.attributes.get("next_setting")
             if next_setting is None:
@@ -106,11 +117,15 @@ async def async_setup_triggers(
                 hass, _sunset_trigger, next_setting
             )
 
+        @callback
+        def _sunset_retry(now):
+            _schedule_next_sunset()
+
         _schedule_next_sunset()
         remove_callbacks.append(
             lambda: sunset_remove[0]() if sunset_remove[0] is not None else None
         )
 
     # Store remove callbacks on the entry
-    hass.data.setdefault("simple_smart_cover_triggers", {})
-    hass.data["simple_smart_cover_triggers"][entry.entry_id] = remove_callbacks
+    hass.data.setdefault(DOMAIN, {}).setdefault(entry.entry_id, {})
+    hass.data[DOMAIN][entry.entry_id]["trigger_removals"] = remove_callbacks

@@ -3,22 +3,21 @@
 from __future__ import annotations
 
 import logging
-import math
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Callable
 
 from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.const import (
     CONF_NAME,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
@@ -74,14 +73,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Simple Smart Cover cover entity."""
-    data = config_entry.data
-
     async_add_entities(
         [
             SimpleSmartCoverEntity(
                 hass=hass,
                 config_entry=config_entry,
-                name=data[CONF_NAME],
             )
         ]
     )
@@ -90,6 +86,7 @@ async def async_setup_entry(
 class SimpleSmartCoverEntity(CoverEntity):
     """Representation of a Simple Smart Cover group."""
 
+    _attr_should_poll = False
     _attr_supported_features = (
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
@@ -100,14 +97,11 @@ class SimpleSmartCoverEntity(CoverEntity):
         self,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
-        name: str,
     ) -> None:
         """Initialize the cover entity."""
         self.hass = hass
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
-        self._group_name = name
-        self._attr_name = name
         self._attr_unique_id = f"{config_entry.entry_id}_cover"
 
         self._target_position = 100
@@ -118,6 +112,7 @@ class SimpleSmartCoverEntity(CoverEntity):
         self._manual_pause_until: datetime | None = None
         self._force_evening = False
         self._startup_time = dt_util.now()
+        self._unsub_cover_state: Callable[[], None] | None = None
 
     @property
     def _data(self) -> dict[str, Any]:
@@ -125,11 +120,16 @@ class SimpleSmartCoverEntity(CoverEntity):
         return {**self._config_entry.data, **self._config_entry.options}
 
     @property
+    def name(self) -> str | None:
+        """Return the entity name (derived from config entry title)."""
+        return self._config_entry.title
+
+    @property
     def device_info(self) -> DeviceInfo:
         """Return device info for this cover group."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry_id)},
-            name=self._group_name,
+            name=self._config_entry.title,
             manufacturer="Simple Smart Cover",
             model="Cover Group",
         )
@@ -141,20 +141,43 @@ class SimpleSmartCoverEntity(CoverEntity):
         self.async_on_remove(
             self._config_entry.add_update_listener(self._async_update_options)
         )
+        self._register_cover_state_listener()
+        self.async_on_remove(self._unregister_cover_state_listener)
 
-        # Listen to real cover state changes to detect manual/external moves.
+    def _register_cover_state_listener(self) -> None:
+        """Register or re-register the real-cover state-change listener."""
+        if self._unsub_cover_state is not None:
+            self._unsub_cover_state()
+            self._unsub_cover_state = None
         covers = self._data.get(CONF_COVERS, [])
         if covers:
-            self.async_on_remove(
-                async_track_state_change_event(
-                    self.hass, covers, self._async_cover_state_changed
-                )
+            self._unsub_cover_state = async_track_state_change_event(
+                self.hass, covers, self._async_cover_state_changed
             )
+
+    def _unregister_cover_state_listener(self) -> None:
+        """Unsubscribe the real-cover state-change listener."""
+        if self._unsub_cover_state is not None:
+            self._unsub_cover_state()
+            self._unsub_cover_state = None
 
     async def _async_update_options(
         self, hass: HomeAssistant, config_entry: ConfigEntry
     ) -> None:
-        """Handle options update."""
+        """Handle options update — re-register listeners, rebuild triggers, recalculate."""
+        # Re-register cover state listener in case the cover list changed
+        self._register_cover_state_listener()
+
+        # Rebuild triggers with updated options
+        from .trigger import async_setup_triggers
+
+        entry_data = hass.data.get(DOMAIN, {}).get(self._entry_id, {})
+        for remove_callback in entry_data.get("trigger_removals", []):
+            remove_callback()
+        entry_data["trigger_removals"] = []
+        await async_setup_triggers(hass, config_entry, self)
+
+        # Recalculate position
         await self.async_update_position()
 
     @callback
@@ -201,6 +224,8 @@ class SimpleSmartCoverEntity(CoverEntity):
             entity_id,
             self._manual_pause_until,
         )
+        # Notify dependent sensors (pause binary sensor, remaining minutes, etc.)
+        self.async_write_ha_state()
 
     def set_evening_state(self, is_evening: bool) -> None:
         """Set whether evening mode should be forced."""
@@ -240,28 +265,28 @@ class SimpleSmartCoverEntity(CoverEntity):
         self._target_position = int(position)
         self.async_write_ha_state()
 
-    def _get_state_float(self, entity_id: str) -> float:
-        """Get a state value as float."""
+    def _get_state_float(self, entity_id: str) -> float | None:
+        """Get a state value as float, or None if unavailable."""
         state = self.hass.states.get(entity_id)
         if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return 0.0
+            return None
         try:
             return float(state.state)
         except (ValueError, TypeError):
-            return 0.0
+            return None
 
-    def _get_state_attr_float(self, entity_id: str, attribute: str) -> float:
-        """Get a state attribute as float."""
+    def _get_state_attr_float(self, entity_id: str, attribute: str) -> float | None:
+        """Get a state attribute as float, or None if unavailable."""
         state = self.hass.states.get(entity_id)
         if state is None:
-            return 0.0
+            return None
         value = state.attributes.get(attribute)
         if value is None:
-            return 0.0
+            return None
         try:
             return float(value)
         except (ValueError, TypeError):
-            return 0.0
+            return None
 
     def _is_quiet_time(self) -> bool:
         """Check if current time is in quiet mode range."""
@@ -281,9 +306,7 @@ class SimpleSmartCoverEntity(CoverEntity):
         """Return whether manual activity pause is currently active."""
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             return False
-        if self._manual_pause_until is None:
-            return False
-        return dt_util.now() < self._manual_pause_until
+        return self._refresh_manual_pause_state()
 
     def get_pause_remaining_minutes(self) -> int | None:
         """Return remaining pause minutes, or None if not paused."""
@@ -295,15 +318,15 @@ class SimpleSmartCoverEntity(CoverEntity):
     def reset_manual_pause(self) -> None:
         """Reset the manual activity pause immediately."""
         self._manual_pause_until = None
-        _LOGGER.debug("Manual activity pause reset for %s", self._attr_name)
+        _LOGGER.debug("Manual activity pause reset for %s", self.name)
         self.async_write_ha_state()
 
     def update_pause_state(self) -> None:
         """Refresh manual activity pause state. Call when cover states change."""
-        self._manual_activity_detected()
+        self._refresh_manual_pause_state()
 
-    def _manual_activity_detected(self) -> bool:
-        """Return whether manual activity pause is currently active."""
+    def _refresh_manual_pause_state(self) -> bool:
+        """Check and clear an expired manual activity pause. Return True if still active."""
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             self._manual_pause_until = None
             return False
@@ -330,16 +353,38 @@ class SimpleSmartCoverEntity(CoverEntity):
                     if isinstance(forecast_entities, list)
                     else forecast_entities
                 )
-                return self._get_state_float(forecast_entity) or fallback
+                val = self._get_state_float(forecast_entity)
+                if val is not None:
+                    return val
+                _LOGGER.warning(
+                    "Forecast temperature entity %s unavailable, using fallback",
+                    forecast_entity,
+                )
+                if fallback is not None:
+                    return fallback
 
         temp_sources = self._data.get(CONF_TEMP_SOURCE)
         if temp_sources:
             temp_source = (
                 temp_sources[0] if isinstance(temp_sources, list) else temp_sources
             )
-            return self._get_state_float(temp_source) or fallback
+            val = self._get_state_float(temp_source)
+            if val is not None:
+                return val
+            _LOGGER.warning(
+                "Temperature source %s unavailable, using fallback",
+                temp_source,
+            )
+            if fallback is not None:
+                return fallback
 
-        return fallback
+        if fallback is not None:
+            return fallback
+        _LOGGER.warning(
+            "No temperature source available for %s, using 0.0",
+            self.name,
+        )
+        return 0.0
 
     def _calculate_target_position(self, is_evening: bool = False) -> int:
         """Calculate the target cover position."""
@@ -487,7 +532,7 @@ class SimpleSmartCoverEntity(CoverEntity):
             self.async_write_ha_state()
             return
 
-        if self._manual_activity_detected():
+        if self._refresh_manual_pause_state():
             self._decision_reason = "manual_activity_pause"
             self._decision_details = self._compute_decision_details(
                 is_evening=is_evening, is_cloudy=False
@@ -495,6 +540,19 @@ class SimpleSmartCoverEntity(CoverEntity):
             self._should_move = False
             self.async_write_ha_state()
             return
+
+        # Check weather availability for non-evening decisions
+        if not is_evening:
+            weather_entity = self._data[CONF_WEATHER_ENTITY]
+            weather_state = self.hass.states.get(weather_entity)
+            if weather_state is None or weather_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                self._decision_reason = "weather_unavailable"
+                self._decision_details = self._compute_decision_details(
+                    is_evening=is_evening, is_cloudy=False
+                )
+                self._should_move = False
+                self.async_write_ha_state()
+                return
 
         new_position = self._calculate_target_position(is_evening=is_evening)
         self._target_position = new_position

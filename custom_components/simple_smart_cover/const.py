@@ -58,3 +58,15 @@ DEFAULT_POSITION_EVENING = 0
 DEFAULT_REEVALUATE_INTERVAL = "30"
 DEFAULT_MIN_POSITION_CHANGE = 5
 DEFAULT_MANUAL_ACTIVITY_DURATION = 15
+
+
+def is_valid_time(value: str) -> bool:
+    """Validate time string HH:MM:SS."""
+    try:
+        parts = value.split(":")
+        if len(parts) != 3:
+            return False
+        h, m, s = int(parts[0]), int(parts[1]), int(parts[2])
+        return 0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59
+    except (ValueError, AttributeError):
+        return False
