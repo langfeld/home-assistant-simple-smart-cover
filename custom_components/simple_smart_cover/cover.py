@@ -112,6 +112,7 @@ class SimpleSmartCoverEntity(CoverEntity):
 
         self._target_position = 100
         self._decision_reason = "unknown"
+        self._decision_details: dict[str, Any] = {}
         self._should_move = False
         self._last_sent_positions: dict[str, tuple[datetime, int]] = {}
         self._manual_pause_until: datetime | None = None
@@ -215,6 +216,7 @@ class SimpleSmartCoverEntity(CoverEntity):
         """Return entity specific state attributes."""
         return {
             "decision_reason": self._decision_reason,
+            "decision_details": self._decision_details,
             "should_move": self._should_move,
             "target_position": self._target_position,
         }
@@ -389,6 +391,55 @@ class SimpleSmartCoverEntity(CoverEntity):
 
         return 100 - position if self._data.get(CONF_INVERT_POSITIONS, False) else position
 
+    def _compute_decision_details(
+        self, is_evening: bool = False, is_cloudy: bool = False
+    ) -> dict[str, Any]:
+        """Return diagnostic details used for the current decision."""
+        details: dict[str, Any] = {
+            "is_evening": is_evening,
+            "is_cloudy": is_cloudy,
+        }
+
+        weather_entity = self._data[CONF_WEATHER_ENTITY]
+        weather_state = self.hass.states.get(weather_entity)
+        condition_now = weather_state.state if weather_state else "unknown"
+        details["weather_condition"] = condition_now
+
+        sun_state = self.hass.states.get("sun.sun")
+        azimuth = float(sun_state.attributes.get("azimuth", 0)) if sun_state else 0
+        elevation = float(sun_state.attributes.get("elevation", 0)) if sun_state else 0
+        details["sun_azimuth"] = round(azimuth, 2)
+        details["sun_elevation"] = round(elevation, 2)
+
+        orientation = self._data.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION)
+        tolerance = self._data.get(CONF_SUN_ANGLE_TOLERANCE, DEFAULT_SUN_ANGLE_TOLERANCE)
+        min_elevation = self._data.get(CONF_MIN_SUN_ELEVATION, DEFAULT_MIN_SUN_ELEVATION)
+        temp_threshold = self._data.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD)
+
+        angle_diff = (azimuth - orientation) % 360
+        if angle_diff > 180:
+            angle_diff -= 360
+
+        temp = self._get_temperature()
+
+        details["window_orientation"] = orientation
+        details["angle_diff"] = round(angle_diff, 2)
+        details["temperature"] = round(temp, 2)
+        details["thresholds"] = {
+            "sun_angle_tolerance": tolerance,
+            "min_sun_elevation": min_elevation,
+            "temp_threshold": temp_threshold,
+        }
+
+        checks = {
+            "angle_in_range": abs(angle_diff) <= tolerance,
+            "elevation_high_enough": elevation >= min_elevation,
+            "temp_high_enough": temp >= temp_threshold,
+        }
+        details["checks"] = checks
+
+        return details
+
     def _get_decision_reason(
         self, is_evening: bool = False, is_cloudy: bool = False
     ) -> str:
@@ -429,12 +480,18 @@ class SimpleSmartCoverEntity(CoverEntity):
 
         if self._is_quiet_time():
             self._decision_reason = "quiet_time"
+            self._decision_details = self._compute_decision_details(
+                is_evening=is_evening, is_cloudy=False
+            )
             self._should_move = False
             self.async_write_ha_state()
             return
 
         if self._manual_activity_detected():
             self._decision_reason = "manual_activity_pause"
+            self._decision_details = self._compute_decision_details(
+                is_evening=is_evening, is_cloudy=False
+            )
             self._should_move = False
             self.async_write_ha_state()
             return
@@ -444,6 +501,9 @@ class SimpleSmartCoverEntity(CoverEntity):
 
         if is_evening:
             self._decision_reason = "evening"
+            self._decision_details = self._compute_decision_details(
+                is_evening=True, is_cloudy=False
+            )
         else:
             weather_entity = self._data[CONF_WEATHER_ENTITY]
             weather_state = self.hass.states.get(weather_entity)
@@ -452,6 +512,9 @@ class SimpleSmartCoverEntity(CoverEntity):
                 CONF_CLOUDY_CONDITIONS, DEFAULT_CLOUDY_CONDITIONS
             )
             self._decision_reason = self._get_decision_reason(
+                is_evening=False, is_cloudy=is_cloudy
+            )
+            self._decision_details = self._compute_decision_details(
                 is_evening=False, is_cloudy=is_cloudy
             )
 

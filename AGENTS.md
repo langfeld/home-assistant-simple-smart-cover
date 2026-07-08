@@ -48,6 +48,7 @@ home-assistant-simple-smart-cover/
 - Evening state is persisted on the cover entity (`_force_evening`) so re-evaluation intervals do not switch back to daytime logic after sunset.
 - Manual activity pause is detected by listening to real cover state changes. Movements that occur shortly after an integration command or match the requested position are ignored as own movements.
 - Test mode calculates positions but never calls `cover.set_cover_position`.
+- The decision reason sensor exposes a `decision_details` attribute containing the live values and thresholds used for the decision (angle diff, elevation, temperature, checks, etc.). This keeps the sensor state compact while allowing detailed diagnostics.
 
 ## Known Issues / TODOs
 1. **Pause sensor refresh is event-driven only**
@@ -60,13 +61,13 @@ home-assistant-simple-smart-cover/
    ```
    This is unreliable if HA slugifies differently or the entity registry assigns another id. Prefer looking up the entity via the entity registry by `unique_id` (`f"{entry.entry_id}_cover"`).
 
-2. **HACS download URL mismatch**
+3. **HACS download URL mismatch**
    HACS was observed trying to download an archive using a commit hash instead of the branch name (`refs/heads/<commit>.zip`). This usually resolves after pushing a proper release or re-adding the repository. Manual installation is the fallback.
 
-3. **No automated tests yet**
+4. **No automated tests yet**
    The project has no test suite. Add `tests/` with `pytest-homeassistant-custom-component` when expanding logic.
 
-4. **Translation cache**
+5. **Translation cache**
    If translation changes (including `data_description`) do not appear, restart Home Assistant to clear the translation cache.
 
 ## Development Workflow

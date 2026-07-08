@@ -48,6 +48,9 @@ Für jede konfigurierte Rollladen-Gruppe werden folgende Entitäten erstellt:
 - **`cover.<name>`** – Virtuelles Cover mit der berechneten Zielposition
 - **`sensor.<name>_zielposition`** – Zeigt die berechnete Zielposition in %
 - **`sensor.<name>_entscheidung`** – Zeigt den Grund für die Entscheidung
+- **`binary_sensor.<name>_pause_aktiv`** – Zeigt an, ob die Pause nach manueller Bedienung aktiv ist
+- **`sensor.<name>_pause_verbleibend`** – Zeigt die verbleibende Pausenzeit in Minuten
+- **`button.<name>_pause_zuruecksetzen`** – Setzt die manuelle Pause sofort zurück
 
 Mögliche Werte für den Entscheidungs-Sensor:
 
@@ -57,6 +60,32 @@ Mögliche Werte für den Entscheidungs-Sensor:
 - `evening` – abendliches Schließen
 - `quiet_time` – Ruhemodus aktiv
 - `manual_activity_pause` – Pause nach manueller Bedienung
+
+### Diagnose-Attribute
+
+Der Entscheidungs-Sensor liefert zusätzlich zum State das Attribut `decision_details`. Darin findest du alle aktuellen Mess- und Grenzwerte, die zur Entscheidung geführt haben:
+
+```yaml
+decision_details:
+  is_evening: false
+  is_cloudy: false
+  weather_condition: sunny
+  sun_azimuth: 210.5
+  sun_elevation: 45.2
+  window_orientation: 180
+  angle_diff: 30.5
+  temperature: 22.3
+  thresholds:
+    sun_angle_tolerance: 25
+    min_sun_elevation: 10
+    temp_threshold: 20
+  checks:
+    angle_in_range: false
+    elevation_high_enough: true
+    temp_high_enough: true
+```
+
+Das ist besonders hilfreich, wenn der State `sunny_outside_angle` lautet: Anhand von `checks` siehst du sofort, ob die Sonne außerhalb des Winkels steht, zu tief steht oder es zu kalt ist.
 
 ## Hinweis
 
