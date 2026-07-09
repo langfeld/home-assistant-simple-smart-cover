@@ -1,69 +1,70 @@
 # Simple Smart Cover
 
-Eine Home Assistant Integration zur automatischen Steuerung von Rollläden basierend auf Wettervorhersage und Sonnenstand.
+A Home Assistant integration for automating covers (rollershutters/blinds) based on weather forecast and sun position.
 
 ## Features
 
-- **Automatische Hochfahrt** morgens zu einer festen Uhrzeit
-- **Wetterabhängige Positionierung** tagsüber mit regelmäßiger Neubewertung
-- **Sonnenschutz** basierend auf Azimuth, Elevation und Temperatur
-- **Automatisches Schließen** bei Sonnenuntergang
-- **Ruhemodus** mit konfigurierbarem Zeitraum
-- **Pause nach manueller Bedienung**, damit der Intervall-Check nicht sofort überschreibt
-- **Testmodus**, um das Verhalten zu beobachten, ohne die Rollläden zu bewegen
-- Pro Rollladen-Gruppe ein eigenes **Cover-Entity** plus **Sensoren** für Zielposition und Entscheidungsgrund
+- **Automatic morning opening** at a configurable time
+- **Weather-aware positioning** during the day with periodic re-evaluation
+- **Sun shading** based on azimuth, elevation and temperature
+- **Automatic closing** at sunset
+- **Quiet mode** with a configurable time window
+- **Pause after manual operation** so the interval check does not immediately override user input
+- **Test mode** to observe behaviour without moving the covers
+- One **cover entity** plus **sensors** for target position and decision reason per cover group
 
 ## Installation
 
-### Variante 1: Über HACS (empfohlen)
+### Option 1: Via HACS (recommended)
 
-1. Stelle sicher, dass [HACS](https://hacs.xyz/) installiert ist.
-2. Öffne HACS und gehe zu **Integrationen**.
-3. Klicke oben rechts auf die drei Punkte und wähle **Benutzerdefiniertes Repository**.
-4. Füge die URL deines GitHub-Repositorys ein, z. B.:
+1. Make sure [HACS](https://hacs.xyz/) is installed.
+2. Open HACS and go to **Integrations**.
+3. Click the three dots in the top right and select **Custom repositories**.
+4. Paste your GitHub repository URL, e.g.:
    ```
    https://github.com/langfeld/home-assistant-simple-smart-cover
    ```
-5. Wähle als Kategorie **Integration** aus und bestätige.
-6. Suche nach **Simple Smart Cover** in HACS und installiere es.
-7. Starte Home Assistant neu.
-8. Gehe zu **Einstellungen → Geräte & Dienste → Integrationen → Hinzufügen**.
-9. Suche nach **Simple Smart Cover** und folge dem Einrichtungsdialog.
+5. Select **Integration** as the category and confirm.
+6. Search for **Simple Smart Cover** in HACS and install it.
+7. Restart Home Assistant.
+8. Go to **Settings → Devices & Services → Add Integration**.
+9. Search for **Simple Smart Cover** and follow the setup dialog.
 
-### Variante 2: Manuell
+### Option 2: Manual
 
-1. Lade die Dateien aus dem Repository herunter.
-2. Kopiere den Ordner `custom_components/simple_smart_cover` in dein Home Assistant `custom_components`-Verzeichnis:
+1. Download the files from the repository.
+2. Copy the `custom_components/simple_smart_cover` folder into your Home Assistant `custom_components` directory:
    ```
    config/custom_components/simple_smart_cover/
    ```
-3. Starte Home Assistant neu.
-4. Gehe zu **Einstellungen → Geräte & Dienste → Integrationen → Hinzufügen**.
-5. Suche nach **Simple Smart Cover** und folge dem Einrichtungsdialog.
+3. Restart Home Assistant.
+4. Go to **Settings → Devices & Services → Add Integration**.
+5. Search for **Simple Smart Cover** and follow the setup dialog.
 
-## Entitäten pro Gruppe
+## Entities per group
 
-Für jede konfigurierte Rollladen-Gruppe werden folgende Entitäten erstellt:
+For each configured cover group the following entities are created:
 
-- **`cover.<name>`** – Virtuelles Cover mit der berechneten Zielposition
-- **`sensor.<name>_zielposition`** – Zeigt die berechnete Zielposition in %
-- **`sensor.<name>_entscheidung`** – Zeigt den Grund für die Entscheidung
-- **`binary_sensor.<name>_pause_aktiv`** – Zeigt an, ob die Pause nach manueller Bedienung aktiv ist
-- **`sensor.<name>_pause_verbleibend`** – Zeigt die verbleibende Pausenzeit in Minuten
-- **`button.<name>_pause_zuruecksetzen`** – Setzt die manuelle Pause sofort zurück
+- **`cover.<name>`** – Virtual cover with the computed target position
+- **`sensor.<name>_target_position`** – Shows the computed target position in %
+- **`sensor.<name>_decision`** – Shows the reason for the decision
+- **`binary_sensor.<name>_pause_active`** – Shows whether the manual-operation pause is active
+- **`sensor.<name>_pause_remaining`** – Shows the remaining pause time in minutes
+- **`button.<name>_reset_pause`** – Resets the manual pause immediately
 
-Mögliche Werte für den Entscheidungs-Sensor:
+Possible values for the decision sensor:
 
-- `cloudy` – bewölktes Wetter
-- `sunny_in_angle` – Sonne im Winkel und warm genug
-- `sunny_outside_angle` – Sonne außerhalb des Winkels oder zu kalt
-- `evening` – abendliches Schließen
-- `quiet_time` – Ruhemodus aktiv
-- `manual_activity_pause` – Pause nach manueller Bedienung
+- `cloudy` – cloudy weather
+- `sunny_in_angle` – sun in the window angle and warm enough
+- `sunny_outside_angle` – sun outside the angle or too cold
+- `evening` – evening closing
+- `quiet_time` – quiet mode active
+- `manual_activity_pause` – pause after manual operation
+- `weather_unavailable` – weather entity not available
 
-### Diagnose-Attribute
+### Diagnostic attributes
 
-Der Entscheidungs-Sensor liefert zusätzlich zum State das Attribut `decision_details`. Darin findest du alle aktuellen Mess- und Grenzwerte, die zur Entscheidung geführt haben:
+The decision sensor additionally exposes a `decision_details` attribute containing all current measurements and thresholds that led to the decision:
 
 ```yaml
 decision_details:
@@ -85,8 +86,14 @@ decision_details:
     temp_high_enough: true
 ```
 
-Das ist besonders hilfreich, wenn der State `sunny_outside_angle` lautet: Anhand von `checks` siehst du sofort, ob die Sonne außerhalb des Winkels steht, zu tief steht oder es zu kalt ist.
+This is especially helpful when the state is `sunny_outside_angle`: the `checks` object shows immediately whether the sun is outside the angle, too low, or it is too cold.
 
-## Hinweis
+## Language
 
-Dies ist eine erste Version. Feedback und Verbesserungsvorschläge sind willkommen.
+The integration ships with English and German translations. Home Assistant selects the language automatically based on your HA user interface language. Entity names are in English so they stay stable across language settings.
+
+A German version of this README is available at [README.de.md](README.de.md).
+
+## Note
+
+This is a first version. Feedback and suggestions for improvement are welcome.

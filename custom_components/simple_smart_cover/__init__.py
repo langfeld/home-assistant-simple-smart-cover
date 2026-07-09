@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .const import DOMAIN
+from .const import DOMAIN, MIGRATION_MAP
 from .trigger import async_setup_triggers
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,17 +21,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Simple Smart Cover from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    # Migrate old config keys to new names (in both data and options)
+    # Migrate old config keys to new names (in both data and options).
     data = dict(entry.data)
     options = dict(entry.options)
-    migration_map = {
-        "sunny_in_angle": "position_sunny_in_angle",
-        "sunny_outside_angle": "position_sunny_outside_angle",
-        "cloudy": "position_cloudy",
-        "evening": "position_evening",
-    }
     needs_update = False
-    for old_key, new_key in migration_map.items():
+    for old_key, new_key in MIGRATION_MAP.items():
         if old_key in data and new_key not in data:
             data[new_key] = data.pop(old_key)
             needs_update = True
@@ -49,7 +43,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Setup triggers after platforms are loaded
+    # Triggers are set up after HA is fully started so the cover entity and the
+    # entity registry are available.
     async def _setup_triggers(_):
         entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
         cover_entity = entry_data.get("cover") if entry_data else None
@@ -67,7 +62,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         if cover_entity:
             await async_setup_triggers(hass, entry, cover_entity)
-            # Initial evaluation right after HA is ready
             await cover_entity.async_update_position()
         else:
             _LOGGER.error(

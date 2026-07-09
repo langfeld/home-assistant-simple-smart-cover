@@ -1,4 +1,11 @@
-"""Cover platform for Simple Smart Cover integration."""
+"""Cover platform for Simple Smart Cover integration.
+
+The cover entity is the brain of a cover group: it owns the target position,
+decides when to move the real covers and tracks the manual-activity pause.
+The actual decision logic (sun angle, weather, temperature, thresholds) lives
+in ``decision.py``; this module orchestrates evaluation, pause handling and
+command dispatch.
+"""
 
 from __future__ import annotations
 
@@ -6,65 +13,40 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
-from homeassistant.components.cover import (
-    CoverEntity,
-    CoverEntityFeature,
-)
+from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONF_NAME,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
-)
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    DOMAIN,
     CONF_COVERS,
-    CONF_WEATHER_ENTITY,
-    CONF_MORNING_TIME,
-    CONF_ENABLE_MORNING,
-    CONF_ENABLE_EVENING,
-    CONF_WINDOW_ORIENTATION,
-    CONF_SUN_ANGLE_TOLERANCE,
-    CONF_MIN_SUN_ELEVATION,
-    CONF_TEMP_THRESHOLD,
-    CONF_TEMP_SOURCE,
-    CONF_USE_FORECAST_MAX_TEMP,
-    CONF_TEMP_FORECAST_ENTITY,
-    CONF_CLOUDY_CONDITIONS,
-    CONF_POSITION_SUNNY_IN_ANGLE,
-    CONF_POSITION_SUNNY_OUTSIDE_ANGLE,
-    CONF_POSITION_CLOUDY,
-    CONF_POSITION_EVENING,
-    CONF_INVERT_POSITIONS,
-    CONF_ENABLE_QUIET_MODE,
-    CONF_QUIET_START,
-    CONF_QUIET_END,
-    CONF_ENABLE_REEVALUATION,
-    CONF_REEVALUATE_INTERVAL,
-    CONF_MIN_POSITION_CHANGE,
     CONF_ENABLE_MANUAL_ACTIVITY_PAUSE,
+    CONF_ENABLE_QUIET_MODE,
     CONF_MANUAL_ACTIVITY_DURATION,
+    CONF_MIN_POSITION_CHANGE,
+    CONF_QUIET_END,
+    CONF_QUIET_START,
     CONF_TEST_MODE,
-    DEFAULT_POSITION_SUNNY_IN_ANGLE,
-    DEFAULT_POSITION_SUNNY_OUTSIDE_ANGLE,
-    DEFAULT_POSITION_CLOUDY,
-    DEFAULT_POSITION_EVENING,
     DEFAULT_MANUAL_ACTIVITY_DURATION,
-    DEFAULT_WINDOW_ORIENTATION,
-    DEFAULT_SUN_ANGLE_TOLERANCE,
-    DEFAULT_MIN_SUN_ELEVATION,
-    DEFAULT_TEMP_THRESHOLD,
-    DEFAULT_CLOUDY_CONDITIONS,
     DEFAULT_MIN_POSITION_CHANGE,
+    DOMAIN,
 )
+from .decision import DecisionContext, DecisionEngine
+from .entities import SimpleSmartCoverDeviceMixin
 
 _LOGGER = logging.getLogger(__name__)
+
+# Grace period after our own service call during which cover state changes are
+# treated as our own movement rather than a manual intervention.
+_OWN_COMMAND_GRACE = timedelta(seconds=120)
+# Position tolerance (percent) within which a cover is considered to match the
+# position we requested.
+_OWN_POSITION_TOLERANCE = 3
+# Ignore cover state changes shortly after startup so HA state restoration does
+# not trigger a false manual-pause.
+_STARTUP_QUIET = timedelta(seconds=60)
 
 
 async def async_setup_entry(
@@ -72,19 +54,12 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Simple Smart Cover cover entity."""
-    async_add_entities(
-        [
-            SimpleSmartCoverEntity(
-                hass=hass,
-                config_entry=config_entry,
-            )
-        ]
-    )
+    """Create the virtual cover entity for the config entry."""
+    async_add_entities([SimpleSmartCoverEntity(hass, config_entry)])
 
 
-class SimpleSmartCoverEntity(CoverEntity):
-    """Representation of a Simple Smart Cover group."""
+class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
+    """Virtual cover entity representing one cover group and its automation."""
 
     _attr_should_poll = False
     _attr_supported_features = (
@@ -93,26 +68,40 @@ class SimpleSmartCoverEntity(CoverEntity):
         | CoverEntityFeature.SET_POSITION
     )
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-    ) -> None:
-        """Initialize the cover entity."""
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+        """Initialize state and the decision engine."""
         self.hass = hass
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
         self._attr_unique_id = f"{config_entry.entry_id}_cover"
 
+        # Target position and decision output exposed to sensors.
         self._target_position = 100
         self._decision_reason = "unknown"
         self._decision_details: dict[str, Any] = {}
         self._should_move = False
-        self._last_sent_positions: dict[str, tuple[datetime, int]] = {}
+
+        # Manual-activity pause tracking.
         self._manual_pause_until: datetime | None = None
+
+        # Evening state is persisted so re-evaluation intervals do not switch
+        # back to daytime logic after sunset.
         self._force_evening = False
+
         self._startup_time = dt_util.now()
         self._unsub_cover_state: Callable[[], None] | None = None
+
+        # Records (sent_time, sent_position) per cover to distinguish our own
+        # commands from manual movements.
+        self._last_sent_positions: dict[str, tuple[datetime, int]] = {}
+
+        # The engine reads the live merged config via the lambda so option
+        # changes take effect without rebuilding the engine.
+        self._engine = DecisionEngine(
+            hass, lambda: self._data, config_entry.title
+        )
+
+    # -- config access -----------------------------------------------------
 
     @property
     def _data(self) -> dict[str, Any]:
@@ -121,21 +110,13 @@ class SimpleSmartCoverEntity(CoverEntity):
 
     @property
     def name(self) -> str | None:
-        """Return the entity name (derived from config entry title)."""
+        """Return the entity name (derived from the config entry title)."""
         return self._config_entry.title
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device info for this cover group."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._entry_id)},
-            name=self._config_entry.title,
-            manufacturer="Simple Smart Cover",
-            model="Cover Group",
-        )
+    # -- lifecycle ---------------------------------------------------------
 
     async def async_added_to_hass(self) -> None:
-        """Register update listener and cover state listeners."""
+        """Publish the entity reference and register listeners."""
         await super().async_added_to_hass()
         self.hass.data[DOMAIN][self._entry_id]["cover"] = self
         self.async_on_remove(
@@ -164,11 +145,9 @@ class SimpleSmartCoverEntity(CoverEntity):
     async def _async_update_options(
         self, hass: HomeAssistant, config_entry: ConfigEntry
     ) -> None:
-        """Handle options update — re-register listeners, rebuild triggers, recalculate."""
-        # Re-register cover state listener in case the cover list changed
+        """Handle options changes: re-register listeners, rebuild triggers, recalculate."""
         self._register_cover_state_listener()
 
-        # Rebuild triggers with updated options
         from .trigger import async_setup_triggers
 
         entry_data = hass.data.get(DOMAIN, {}).get(self._entry_id, {})
@@ -177,12 +156,19 @@ class SimpleSmartCoverEntity(CoverEntity):
         entry_data["trigger_removals"] = []
         await async_setup_triggers(hass, config_entry, self)
 
-        # Recalculate position
         await self.async_update_position()
+
+    # -- manual activity pause detection ----------------------------------
 
     @callback
     def _async_cover_state_changed(self, event) -> None:
-        """Detect manual or external cover movements."""
+        """Detect manual or external cover movements and start a pause.
+
+        A state change is considered our own movement (and therefore ignored)
+        when it happens within the grace period after we sent a command, or when
+        the reported position matches the position we requested. Everything else
+        is treated as a manual intervention and starts the pause timer.
+        """
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             return
 
@@ -191,30 +177,30 @@ class SimpleSmartCoverEntity(CoverEntity):
             return
 
         now = dt_util.now()
-        # Ignore state changes shortly after startup to avoid false positives
-        # while HA is still restoring states.
-        if now < self._startup_time + timedelta(seconds=60):
+        # Ignore state changes shortly after startup while HA restores states.
+        if now < self._startup_time + _STARTUP_QUIET:
             return
 
         entity_id = new_state.entity_id
-        grace_period = timedelta(seconds=120)
-        position_tolerance = 3  # percent
-
         last_sent = self._last_sent_positions.get(entity_id)
+
         if last_sent is not None:
             sent_time, sent_pos = last_sent
-            if now < sent_time + grace_period:
+            if now < sent_time + _OWN_COMMAND_GRACE:
                 # Movement shortly after our own command: assume it is ours.
                 return
             try:
                 current_pos = int(new_state.attributes.get("current_position", -1))
-                if current_pos >= 0 and abs(current_pos - sent_pos) <= position_tolerance:
+                if (
+                    current_pos >= 0
+                    and abs(current_pos - sent_pos) <= _OWN_POSITION_TOLERANCE
+                ):
                     # Position matches what we requested: not a manual move.
                     return
             except (ValueError, TypeError):
                 pass
 
-        # Movement was not initiated by us: start manual activity pause.
+        # Movement was not initiated by us: start the manual activity pause.
         duration_minutes = self._data.get(
             CONF_MANUAL_ACTIVITY_DURATION, DEFAULT_MANUAL_ACTIVITY_DURATION
         )
@@ -224,86 +210,17 @@ class SimpleSmartCoverEntity(CoverEntity):
             entity_id,
             self._manual_pause_until,
         )
-        # Notify dependent sensors (pause binary sensor, remaining minutes, etc.)
+        # Notify dependent sensors (pause binary sensor, remaining minutes).
         self.async_write_ha_state()
+
+    # -- pause public API --------------------------------------------------
 
     def set_evening_state(self, is_evening: bool) -> None:
-        """Set whether evening mode should be forced."""
+        """Force evening mode on or off (used by the sunset trigger)."""
         self._force_evening = is_evening
 
-    @property
-    def current_cover_position(self) -> int:
-        """Return current cover position."""
-        return self._target_position
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return entity specific state attributes."""
-        return {
-            "decision_reason": self._decision_reason,
-            "decision_details": self._decision_details,
-            "should_move": self._should_move,
-            "target_position": self._target_position,
-        }
-
-    @property
-    def is_closed(self) -> bool:
-        """Return if the cover is closed."""
-        return self._target_position == 0
-
-    async def async_open_cover(self, **kwargs: Any) -> None:
-        """Open the cover."""
-        await self.async_set_cover_position(position=100)
-
-    async def async_close_cover(self, **kwargs: Any) -> None:
-        """Close the cover."""
-        await self.async_set_cover_position(position=0)
-
-    async def async_set_cover_position(self, **kwargs: Any) -> None:
-        """Set the cover position."""
-        position = kwargs.get("position", 100)
-        self._target_position = int(position)
-        self.async_write_ha_state()
-
-    def _get_state_float(self, entity_id: str) -> float | None:
-        """Get a state value as float, or None if unavailable."""
-        state = self.hass.states.get(entity_id)
-        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return None
-        try:
-            return float(state.state)
-        except (ValueError, TypeError):
-            return None
-
-    def _get_state_attr_float(self, entity_id: str, attribute: str) -> float | None:
-        """Get a state attribute as float, or None if unavailable."""
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            return None
-        value = state.attributes.get(attribute)
-        if value is None:
-            return None
-        try:
-            return float(value)
-        except (ValueError, TypeError):
-            return None
-
-    def _is_quiet_time(self) -> bool:
-        """Check if current time is in quiet mode range."""
-        if not self._data.get(CONF_ENABLE_QUIET_MODE, False):
-            return False
-
-        now = dt_util.now()
-        now_str = now.strftime("%H:%M:%S")
-        quiet_start = self._data.get(CONF_QUIET_START, "22:00:00")
-        quiet_end = self._data.get(CONF_QUIET_END, "07:00:00")
-
-        if quiet_start <= quiet_end:
-            return quiet_start <= now_str <= quiet_end
-        return now_str >= quiet_start or now_str <= quiet_end
-
     def is_manual_pause_active(self) -> bool:
-        """Return whether manual activity pause is currently active."""
+        """Return whether the manual activity pause is currently active."""
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             return False
         return self._refresh_manual_pause_state()
@@ -322,11 +239,11 @@ class SimpleSmartCoverEntity(CoverEntity):
         self.async_write_ha_state()
 
     def update_pause_state(self) -> None:
-        """Refresh manual activity pause state. Call when cover states change."""
+        """Refresh manual activity pause state (call when cover states change)."""
         self._refresh_manual_pause_state()
 
     def _refresh_manual_pause_state(self) -> bool:
-        """Check and clear an expired manual activity pause. Return True if still active."""
+        """Clear an expired pause. Return True if the pause is still active."""
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             self._manual_pause_until = None
             return False
@@ -340,244 +257,129 @@ class SimpleSmartCoverEntity(CoverEntity):
         self._manual_pause_until = None
         return False
 
-    def _get_temperature(self) -> float:
-        """Get the temperature to use for decision making."""
-        weather_entity = self._data[CONF_WEATHER_ENTITY]
-        fallback = self._get_state_attr_float(weather_entity, "temperature")
+    # -- quiet time --------------------------------------------------------
 
-        if self._data.get(CONF_USE_FORECAST_MAX_TEMP, False):
-            forecast_entities = self._data.get(CONF_TEMP_FORECAST_ENTITY)
-            if forecast_entities:
-                forecast_entity = (
-                    forecast_entities[0]
-                    if isinstance(forecast_entities, list)
-                    else forecast_entities
-                )
-                val = self._get_state_float(forecast_entity)
-                if val is not None:
-                    return val
-                _LOGGER.warning(
-                    "Forecast temperature entity %s unavailable, using fallback",
-                    forecast_entity,
-                )
-                if fallback is not None:
-                    return fallback
+    def _is_quiet_time(self) -> bool:
+        """Check if the current time is inside the configured quiet window.
 
-        temp_sources = self._data.get(CONF_TEMP_SOURCE)
-        if temp_sources:
-            temp_source = (
-                temp_sources[0] if isinstance(temp_sources, list) else temp_sources
-            )
-            val = self._get_state_float(temp_source)
-            if val is not None:
-                return val
-            _LOGGER.warning(
-                "Temperature source %s unavailable, using fallback",
-                temp_source,
-            )
-            if fallback is not None:
-                return fallback
+        Supports overnight windows where the start time is later than the end
+        time (e.g. 22:00 - 07:00).
+        """
+        if not self._data.get(CONF_ENABLE_QUIET_MODE, False):
+            return False
 
-        if fallback is not None:
-            return fallback
-        _LOGGER.warning(
-            "No temperature source available for %s, using 0.0",
-            self.name,
-        )
-        return 0.0
+        now_str = dt_util.now().strftime("%H:%M:%S")
+        quiet_start = self._data.get(CONF_QUIET_START, "22:00:00")
+        quiet_end = self._data.get(CONF_QUIET_END, "07:00:00")
 
-    def _calculate_target_position(self, is_evening: bool = False) -> int:
-        """Calculate the target cover position."""
-        if is_evening:
-            position = self._data.get(CONF_POSITION_EVENING, DEFAULT_POSITION_EVENING)
-            return 100 - position if self._data.get(CONF_INVERT_POSITIONS, False) else position
+        if quiet_start <= quiet_end:
+            return quiet_start <= now_str <= quiet_end
+        return now_str >= quiet_start or now_str <= quiet_end
 
-        weather_entity = self._data[CONF_WEATHER_ENTITY]
-        weather_state = self.hass.states.get(weather_entity)
-        condition_now = weather_state.state if weather_state else "unknown"
+    # -- cover entity interface -------------------------------------------
 
-        is_cloudy = condition_now in self._data.get(
-            CONF_CLOUDY_CONDITIONS, DEFAULT_CLOUDY_CONDITIONS
-        )
+    @property
+    def current_cover_position(self) -> int:
+        """Return the current (target) cover position."""
+        return self._target_position
 
-        if is_cloudy:
-            position = self._data.get(CONF_POSITION_CLOUDY, DEFAULT_POSITION_CLOUDY)
-            return 100 - position if self._data.get(CONF_INVERT_POSITIONS, False) else position
-
-        sun_state = self.hass.states.get("sun.sun")
-        azimuth = float(sun_state.attributes.get("azimuth", 0)) if sun_state else 0
-        elevation = float(sun_state.attributes.get("elevation", 0)) if sun_state else 0
-
-        orientation = self._data.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION)
-        tolerance = self._data.get(CONF_SUN_ANGLE_TOLERANCE, DEFAULT_SUN_ANGLE_TOLERANCE)
-        min_elevation = self._data.get(CONF_MIN_SUN_ELEVATION, DEFAULT_MIN_SUN_ELEVATION)
-        temp_threshold = self._data.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD)
-
-        angle_diff = (azimuth - orientation) % 360
-        if angle_diff > 180:
-            angle_diff -= 360
-
-        temp = self._get_temperature()
-
-        is_sunny_in_angle = (
-            abs(angle_diff) <= tolerance
-            and elevation >= min_elevation
-            and temp >= temp_threshold
-        )
-
-        if is_sunny_in_angle:
-            position = self._data.get(
-                CONF_POSITION_SUNNY_IN_ANGLE, DEFAULT_POSITION_SUNNY_IN_ANGLE
-            )
-        else:
-            position = self._data.get(
-                CONF_POSITION_SUNNY_OUTSIDE_ANGLE, DEFAULT_POSITION_SUNNY_OUTSIDE_ANGLE
-            )
-
-        return 100 - position if self._data.get(CONF_INVERT_POSITIONS, False) else position
-
-    def _compute_decision_details(
-        self, is_evening: bool = False, is_cloudy: bool = False
-    ) -> dict[str, Any]:
-        """Return diagnostic details used for the current decision."""
-        details: dict[str, Any] = {
-            "is_evening": is_evening,
-            "is_cloudy": is_cloudy,
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return entity-specific state attributes."""
+        return {
+            "decision_reason": self._decision_reason,
+            "decision_details": self._decision_details,
+            "should_move": self._should_move,
+            "target_position": self._target_position,
         }
 
-        weather_entity = self._data[CONF_WEATHER_ENTITY]
-        weather_state = self.hass.states.get(weather_entity)
-        condition_now = weather_state.state if weather_state else "unknown"
-        details["weather_condition"] = condition_now
+    @property
+    def is_closed(self) -> bool:
+        """Return True if the cover is fully closed."""
+        return self._target_position == 0
 
-        sun_state = self.hass.states.get("sun.sun")
-        azimuth = float(sun_state.attributes.get("azimuth", 0)) if sun_state else 0
-        elevation = float(sun_state.attributes.get("elevation", 0)) if sun_state else 0
-        details["sun_azimuth"] = round(azimuth, 2)
-        details["sun_elevation"] = round(elevation, 2)
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open the cover (set target position to 100)."""
+        await self.async_set_cover_position(position=100)
 
-        orientation = self._data.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION)
-        tolerance = self._data.get(CONF_SUN_ANGLE_TOLERANCE, DEFAULT_SUN_ANGLE_TOLERANCE)
-        min_elevation = self._data.get(CONF_MIN_SUN_ELEVATION, DEFAULT_MIN_SUN_ELEVATION)
-        temp_threshold = self._data.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD)
+    async def async_close_cover(self, **kwargs: Any) -> None:
+        """Close the cover (set target position to 0)."""
+        await self.async_set_cover_position(position=0)
 
-        angle_diff = (azimuth - orientation) % 360
-        if angle_diff > 180:
-            angle_diff -= 360
+    async def async_set_cover_position(self, **kwargs: Any) -> None:
+        """Set the target position from a service call."""
+        position = kwargs.get("position", 100)
+        self._target_position = int(position)
+        self.async_write_ha_state()
 
-        temp = self._get_temperature()
-
-        details["window_orientation"] = orientation
-        details["angle_diff"] = round(angle_diff, 2)
-        details["temperature"] = round(temp, 2)
-        details["thresholds"] = {
-            "sun_angle_tolerance": tolerance,
-            "min_sun_elevation": min_elevation,
-            "temp_threshold": temp_threshold,
-        }
-
-        checks = {
-            "angle_in_range": abs(angle_diff) <= tolerance,
-            "elevation_high_enough": elevation >= min_elevation,
-            "temp_high_enough": temp >= temp_threshold,
-        }
-        details["checks"] = checks
-
-        return details
-
-    def _get_decision_reason(
-        self, is_evening: bool = False, is_cloudy: bool = False
-    ) -> str:
-        """Return the reason for the target position."""
-        if is_evening:
-            return "evening"
-        if is_cloudy:
-            return "cloudy"
-
-        sun_state = self.hass.states.get("sun.sun")
-        azimuth = float(sun_state.attributes.get("azimuth", 0)) if sun_state else 0
-        elevation = float(sun_state.attributes.get("elevation", 0)) if sun_state else 0
-
-        orientation = self._data.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION)
-        tolerance = self._data.get(CONF_SUN_ANGLE_TOLERANCE, DEFAULT_SUN_ANGLE_TOLERANCE)
-        min_elevation = self._data.get(CONF_MIN_SUN_ELEVATION, DEFAULT_MIN_SUN_ELEVATION)
-        temp_threshold = self._data.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD)
-
-        angle_diff = (azimuth - orientation) % 360
-        if angle_diff > 180:
-            angle_diff -= 360
-
-        temp = self._get_temperature()
-
-        if abs(angle_diff) > tolerance:
-            return "sunny_outside_angle"
-        if elevation < min_elevation:
-            return "sunny_outside_angle"
-        if temp < temp_threshold:
-            return "sunny_outside_angle"
-        return "sunny_in_angle"
+    # -- core evaluation ---------------------------------------------------
 
     async def async_update_position(self, is_evening: bool | None = None) -> None:
-        """Update target position and move covers if needed."""
+        """Re-evaluate the target position and move the covers if needed.
+
+        Evaluation order:
+        1. Evening override (persisted so re-evaluations stay in evening mode).
+        2. Quiet time -> no movement.
+        3. Manual activity pause -> no movement.
+        4. Weather unavailable (daytime only) -> no movement.
+        5. Normal decision via the DecisionEngine.
+        """
         if is_evening is not None:
             self._force_evening = is_evening
         is_evening = self._force_evening
 
+        # Quiet time: never move, but still publish diagnostic details.
         if self._is_quiet_time():
-            self._decision_reason = "quiet_time"
-            self._decision_details = self._compute_decision_details(
-                is_evening=is_evening, is_cloudy=False
-            )
-            self._should_move = False
-            self.async_write_ha_state()
+            ctx = self._engine.build_context(is_evening=is_evening, is_cloudy=False)
+            self._set_decision("quiet_time", ctx, move=False)
             return
 
+        # Manual activity pause: respect the user's manual movement.
         if self._refresh_manual_pause_state():
-            self._decision_reason = "manual_activity_pause"
-            self._decision_details = self._compute_decision_details(
-                is_evening=is_evening, is_cloudy=False
-            )
-            self._should_move = False
-            self.async_write_ha_state()
+            ctx = self._engine.build_context(is_evening=is_evening, is_cloudy=False)
+            self._set_decision("manual_activity_pause", ctx, move=False)
             return
 
-        # Check weather availability for non-evening decisions
-        if not is_evening:
-            weather_entity = self._data[CONF_WEATHER_ENTITY]
-            weather_state = self.hass.states.get(weather_entity)
-            if weather_state is None or weather_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-                self._decision_reason = "weather_unavailable"
-                self._decision_details = self._compute_decision_details(
-                    is_evening=is_evening, is_cloudy=False
-                )
-                self._should_move = False
-                self.async_write_ha_state()
-                return
+        # Daytime decisions need a working weather entity.
+        if not is_evening and not self._engine.is_weather_available():
+            ctx = self._engine.build_context(is_evening=is_evening, is_cloudy=False)
+            self._set_decision("weather_unavailable", ctx, move=False)
+            return
 
-        new_position = self._calculate_target_position(is_evening=is_evening)
-        self._target_position = new_position
-
+        # Normal decision path: build context once, derive all outputs from it.
+        # Evening decisions force is_cloudy=False in the diagnostic details to
+        # match the original behaviour (evening ignores weather conditions).
         if is_evening:
-            self._decision_reason = "evening"
-            self._decision_details = self._compute_decision_details(
-                is_evening=True, is_cloudy=False
-            )
+            ctx = self._engine.build_context(is_evening=True, is_cloudy=False)
         else:
-            weather_entity = self._data[CONF_WEATHER_ENTITY]
-            weather_state = self.hass.states.get(weather_entity)
-            condition_now = weather_state.state if weather_state else "unknown"
-            is_cloudy = condition_now in self._data.get(
-                CONF_CLOUDY_CONDITIONS, DEFAULT_CLOUDY_CONDITIONS
-            )
-            self._decision_reason = self._get_decision_reason(
-                is_evening=False, is_cloudy=is_cloudy
-            )
-            self._decision_details = self._compute_decision_details(
-                is_evening=False, is_cloudy=is_cloudy
-            )
+            ctx = self._engine.build_context(is_evening=False)
+        new_position = self._engine.target_position(ctx)
+        self._target_position = new_position
+        self._decision_reason = self._engine.reason(ctx)
+        self._decision_details = self._engine.details(ctx)
 
-        # Calculate should_move
-        current_positions = []
+        # Only move when the real covers differ enough from the target.
+        self._should_move = self._compute_should_move(new_position)
+        self.async_write_ha_state()
+
+        if self._should_move and not self._data.get(CONF_TEST_MODE, False):
+            await self._dispatch_to_covers(new_position)
+
+    def _set_decision(self, reason: str, ctx: DecisionContext, *, move: bool) -> None:
+        """Record a non-normal decision (quiet/pause/unavailable) and publish state."""
+        self._decision_reason = reason
+        self._decision_details = self._engine.details(ctx)
+        self._should_move = move
+        self.async_write_ha_state()
+
+    def _compute_should_move(self, new_position: int) -> bool:
+        """Return True if the real covers differ enough from the target.
+
+        Averages the current positions of all configured covers and compares
+        against the configured minimum change threshold. If no cover reports a
+        position, we assume a move is needed.
+        """
+        current_positions: list[int] = []
         for cover in self._data.get(CONF_COVERS, []):
             state = self.hass.states.get(cover)
             if state is None:
@@ -589,22 +391,27 @@ class SimpleSmartCoverEntity(CoverEntity):
             except (ValueError, TypeError):
                 continue
 
-        if current_positions:
-            avg_current = sum(current_positions) // len(current_positions)
-            min_change = self._data.get(CONF_MIN_POSITION_CHANGE, DEFAULT_MIN_POSITION_CHANGE)
-            self._should_move = abs(new_position - avg_current) >= min_change
-        else:
-            self._should_move = True
+        if not current_positions:
+            return True
 
-        self.async_write_ha_state()
+        avg_current = sum(current_positions) // len(current_positions)
+        min_change = self._data.get(
+            CONF_MIN_POSITION_CHANGE, DEFAULT_MIN_POSITION_CHANGE
+        )
+        return abs(new_position - avg_current) >= min_change
 
-        if self._should_move and not self._data.get(CONF_TEST_MODE, False):
-            now = dt_util.now()
-            for cover in self._data.get(CONF_COVERS, []):
-                await self.hass.services.async_call(
-                    "cover",
-                    "set_cover_position",
-                    {"entity_id": cover, "position": new_position},
-                    blocking=False,
-                )
-                self._last_sent_positions[cover] = (now, new_position)
+    async def _dispatch_to_covers(self, position: int) -> None:
+        """Send the target position to every configured real cover.
+
+        Records the sent time and position so the state-change listener can
+        distinguish our own commands from manual movements.
+        """
+        now = dt_util.now()
+        for cover in self._data.get(CONF_COVERS, []):
+            await self.hass.services.async_call(
+                "cover",
+                "set_cover_position",
+                {"entity_id": cover, "position": position},
+                blocking=False,
+            )
+            self._last_sent_positions[cover] = (now, position)

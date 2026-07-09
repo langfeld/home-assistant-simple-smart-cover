@@ -5,6 +5,9 @@
       "invalid_time": "Ungültiges Zeitformat. Bitte HH:MM:SS verwenden.",
       "name_exists": "Eine Gruppe mit diesem Namen existiert bereits."
     },
+    "abort": {
+      "source_not_found": "Quell-Gruppe nicht gefunden."
+    },
     "step": {
       "user": {
         "title": "Simple Smart Cover einrichten",

@@ -23,16 +23,21 @@ home-assistant-simple-smart-cover/
 ├── custom_components/simple_smart_cover/
 │   ├── __init__.py          # Entry setup/unload, migration of old config keys
 │   ├── manifest.json        # Integration manifest
-│   ├── config_flow.py       # Config + Options flow
-│   ├── const.py             # All config keys and defaults
-│   ├── cover.py             # Virtual cover entity + decision logic
-│   ├── sensor.py            # Target position & decision reason sensors
+│   ├── const.py             # Config keys, defaults, label maps, migration map
+│   ├── decision.py          # Decision engine (sun/weather/temp -> position/reason/details)
+│   ├── entities.py          # Shared entity mixins + device-info / cover-lookup helpers
+│   ├── schemas.py           # Voluptuous schema + selector builders for the config flow
+│   ├── cover.py             # Virtual cover entity + orchestration + pause handling
+│   ├── sensor.py            # Target position, decision, pause sensors
 │   ├── button.py            # Pause reset button
 │   ├── trigger.py           # Time/sun-based re-evaluation triggers
-│   └── translations/de.json # German UI translations
+│   └── translations/
+│       ├── de.json          # German UI translations
+│       └── en.json          # English UI translations (HA fallback)
 ├── hacs.json                # HACS metadata
 ├── .gitignore
-└── README.md
+├── README.md                # English README (primary)
+└── README.de.md             # German README
 ```
 
 ## Domain
@@ -43,31 +48,23 @@ home-assistant-simple-smart-cover/
 - Options flow allows editing the entry afterwards.
 - Config flow supports duplicating an existing group via `duplicate_select` / `duplicate_configure` steps.
 - All entities of a config entry share the same `DeviceInfo`, so Home Assistant groups them into one device page per cover group.
-- Optional entity selectors (e.g. temperature sensors) must be nulled on clear; use `_optional_entities()` before saving.
+- Optional entity selectors (e.g. temperature sensors) must be nulled on clear; use `null_cleared_optional_keys()` (from `schemas.py`) before saving.
 - Cover entity reads `{**config_entry.data, **config_entry.options}` so option changes take effect immediately.
 - Evening state is persisted on the cover entity (`_force_evening`) so re-evaluation intervals do not switch back to daytime logic after sunset.
 - Manual activity pause is detected by listening to real cover state changes. Movements that occur shortly after an integration command or match the requested position are ignored as own movements.
 - Test mode calculates positions but never calls `cover.set_cover_position`.
 - The decision reason sensor exposes a `decision_details` attribute containing the live values and thresholds used for the decision (angle diff, elevation, temperature, checks, etc.). This keeps the sensor state compact while allowing detailed diagnostics.
+- Decision logic (sun angle, weather, temperature, thresholds) lives in `decision.py` (`DecisionEngine`); `cover.py` only orchestrates evaluation, pause handling and command dispatch.
+- Shared entity boilerplate (device info, cover lookup, state listeners) lives in `entities.py` mixins; sensors and button inherit from them.
 
 ## Known Issues / TODOs
-1. **Pause sensor refresh is event-driven only**
-   The pause sensors update when a bound cover changes state and when the cover entity updates. They do not have an independent timer, so the "remaining minutes" sensor may lag up to the next trigger interval after the pause expires.
+1. **HACS download URL mismatch**
+   HACS was observed trying to download an archive using a commit hash instead of the branch name (`refs/heads/<commit>.zip`). This usually resolves after pushing a proper release or re-add the repository. Manual installation is the fallback.
 
-2. **Fragile cover entity lookup in `__init__.py`**
-   The trigger setup guesses the cover entity id as:
-   ```python
-   cover_entity_id = f"cover.{entry.data['name'].lower().replace(' ', '_')}"
-   ```
-   This is unreliable if HA slugifies differently or the entity registry assigns another id. Prefer looking up the entity via the entity registry by `unique_id` (`f"{entry.entry_id}_cover"`).
-
-3. **HACS download URL mismatch**
-   HACS was observed trying to download an archive using a commit hash instead of the branch name (`refs/heads/<commit>.zip`). This usually resolves after pushing a proper release or re-adding the repository. Manual installation is the fallback.
-
-4. **No automated tests yet**
+2. **No automated tests yet**
    The project has no test suite. Add `tests/` with `pytest-homeassistant-custom-component` when expanding logic.
 
-5. **Translation cache**
+3. **Translation cache**
    If translation changes (including `data_description`) do not appear, restart Home Assistant to clear the translation cache.
 
 ## Development Workflow
@@ -79,6 +76,7 @@ home-assistant-simple-smart-cover/
 3. Validate translation JSON:
    ```bash
    python3 -m json.tool custom_components/simple_smart_cover/translations/de.json > /dev/null
+   python3 -m json.tool custom_components/simple_smart_cover/translations/en.json > /dev/null
    ```
 4. Push to GitHub.
 5. In Home Assistant: reload the integration or restart HA.
@@ -90,12 +88,13 @@ Copy `custom_components/simple_smart_cover/` into the HA `config/custom_componen
 ## Code Style
 - Type hints encouraged (`from __future__ import annotations`).
 - Constants live in `const.py`; do not hard-code config keys in logic files.
-- Keep config flow and options flow schema generation shared via `_get_schema(defaults)`.
+- Schema construction lives in `schemas.py` (`build_schema` / `build_duplicate_schema`); the config flow imports from there.
+- Decision logic lives in `decision.py`; `cover.py` delegates to `DecisionEngine`.
 
 ## Migration Notes
-`__init__.py` migrates old config keys to new names on setup:
+`__init__.py` migrates old config keys to new names on setup using `MIGRATION_MAP` from `const.py`:
 ```python
-{
+MIGRATION_MAP = {
     "sunny_in_angle": "position_sunny_in_angle",
     "sunny_outside_angle": "position_sunny_outside_angle",
     "cloudy": "position_cloudy",
