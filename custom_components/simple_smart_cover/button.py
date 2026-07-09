@@ -2,6 +2,9 @@
 
 A single config button per cover group that resets the manual activity pause
 immediately, so the user does not have to wait for the pause timer to expire.
+
+Entity names are translatable via ``_attr_translation_key`` and the ``entity``
+section in the translation files.
 """
 
 from __future__ import annotations
@@ -12,7 +15,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import SUFFIX_PAUSE_RESET
 from .entities import SimpleSmartCoverDeviceMixin
 
 
@@ -28,6 +30,8 @@ async def async_setup_entry(
 class SimpleSmartCoverPauseResetButton(SimpleSmartCoverDeviceMixin, ButtonEntity):
     """Button that resets the manual activity pause immediately."""
 
+    _attr_has_entity_name = True
+    _attr_translation_key = "reset_pause"
     _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
@@ -36,11 +40,6 @@ class SimpleSmartCoverPauseResetButton(SimpleSmartCoverDeviceMixin, ButtonEntity
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
         self._attr_unique_id = f"{config_entry.entry_id}_pause_reset"
-
-    @property
-    def name(self) -> str | None:
-        """Return the entity name."""
-        return f"{self._config_entry.title} {SUFFIX_PAUSE_RESET}"
 
     async def async_added_to_hass(self) -> None:
         """Register an update listener so name changes are reflected."""

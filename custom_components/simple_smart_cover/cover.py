@@ -62,6 +62,7 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
     """Virtual cover entity representing one cover group and its automation."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
     _attr_supported_features = (
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
@@ -107,11 +108,6 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
     def _data(self) -> dict[str, Any]:
         """Return merged config entry data and options."""
         return {**self._config_entry.data, **self._config_entry.options}
-
-    @property
-    def name(self) -> str | None:
-        """Return the entity name (derived from the config entry title)."""
-        return self._config_entry.title
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -235,12 +231,8 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
     def reset_manual_pause(self) -> None:
         """Reset the manual activity pause immediately."""
         self._manual_pause_until = None
-        _LOGGER.debug("Manual activity pause reset for %s", self.name)
+        _LOGGER.debug("Manual activity pause reset for %s", self._config_entry.title)
         self.async_write_ha_state()
-
-    def update_pause_state(self) -> None:
-        """Refresh manual activity pause state (call when cover states change)."""
-        self._refresh_manual_pause_state()
 
     def _refresh_manual_pause_state(self) -> bool:
         """Clear an expired pause. Return True if the pause is still active."""

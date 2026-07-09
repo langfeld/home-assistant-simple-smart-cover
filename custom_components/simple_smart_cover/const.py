@@ -150,17 +150,6 @@ REEVALUATE_INTERVAL_TRACKING = {
 COPY_SUFFIX = "Copy"
 
 # ---------------------------------------------------------------------------
-# Entity name suffixes (kept English so entity names are stable across HA
-# language settings).
-# ---------------------------------------------------------------------------
-
-SUFFIX_TARGET_POSITION = "Target Position"
-SUFFIX_DECISION = "Decision"
-SUFFIX_PAUSE_ACTIVE = "Pause Active"
-SUFFIX_PAUSE_REMAINING = "Pause Remaining"
-SUFFIX_PAUSE_RESET = "Reset Pause"
-
-# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

@@ -1,11 +1,11 @@
 {
   "domain": "simple_smart_cover",
   "name": "Simple Smart Cover",
-  "codeowners": [],
+  "codeowners": ["@langfeld"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/langfeld/home-assistant-simple-smart-cover",
-  "iot_class": "local_polling",
+  "iot_class": "local_push",
   "requirements": [],
   "version": "1.2.0"
 }

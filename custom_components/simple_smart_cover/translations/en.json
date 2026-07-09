@@ -1,5 +1,28 @@
 {
   "title": "Simple Smart Cover",
+  "entity": {
+    "sensor": {
+      "target_position": {
+        "name": "Target Position"
+      },
+      "decision": {
+        "name": "Decision"
+      },
+      "pause_remaining": {
+        "name": "Pause Remaining"
+      }
+    },
+    "binary_sensor": {
+      "pause_active": {
+        "name": "Pause Active"
+      }
+    },
+    "button": {
+      "reset_pause": {
+        "name": "Reset Pause"
+      }
+    }
+  },
   "config": {
     "error": {
       "invalid_time": "Invalid time format. Please use HH:MM:SS.",

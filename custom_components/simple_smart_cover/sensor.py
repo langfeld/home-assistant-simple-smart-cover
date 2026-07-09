@@ -9,6 +9,10 @@ Four sensors per cover group:
 The first two track cover state changes via SimpleSmartCoverStateSensorMixin;
 the pause sensors use SimpleSmartCoverPauseEntityMixin which adds a periodic
 refresh so expired pauses clear without a cover state change.
+
+Entity names are translatable via ``_attr_translation_key`` and the
+``entity`` section in the translation files. With ``_attr_has_entity_name``
+set, HA prefixes each name with the device (group) name automatically.
 """
 
 from __future__ import annotations
@@ -20,12 +24,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import (
-    SUFFIX_DECISION,
-    SUFFIX_PAUSE_ACTIVE,
-    SUFFIX_PAUSE_REMAINING,
-    SUFFIX_TARGET_POSITION,
-)
 from .entities import (
     SimpleSmartCoverPauseEntityMixin,
     SimpleSmartCoverStateSensorMixin,
@@ -51,6 +49,8 @@ async def async_setup_entry(
 class SimpleSmartCoverTargetPositionSensor(SimpleSmartCoverStateSensorMixin, SensorEntity):
     """Sensor showing the computed target position in percent."""
 
+    _attr_has_entity_name = True
+    _attr_translation_key = "target_position"
     _attr_native_unit_of_measurement = "%"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -60,11 +60,6 @@ class SimpleSmartCoverTargetPositionSensor(SimpleSmartCoverStateSensorMixin, Sen
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
         self._attr_unique_id = f"{config_entry.entry_id}_target_position"
-
-    @property
-    def name(self) -> str | None:
-        """Return the entity name."""
-        return f"{self._config_entry.title} {SUFFIX_TARGET_POSITION}"
 
     def _update_from_cover_state(self, state) -> None:
         """Read the target_position attribute from the cover state."""
@@ -76,6 +71,8 @@ class SimpleSmartCoverTargetPositionSensor(SimpleSmartCoverStateSensorMixin, Sen
 class SimpleSmartCoverDecisionSensor(SimpleSmartCoverStateSensorMixin, SensorEntity):
     """Diagnostic sensor showing the decision reason and details."""
 
+    _attr_has_entity_name = True
+    _attr_translation_key = "decision"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
@@ -84,11 +81,6 @@ class SimpleSmartCoverDecisionSensor(SimpleSmartCoverStateSensorMixin, SensorEnt
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
         self._attr_unique_id = f"{config_entry.entry_id}_decision"
-
-    @property
-    def name(self) -> str | None:
-        """Return the entity name."""
-        return f"{self._config_entry.title} {SUFFIX_DECISION}"
 
     def _update_from_cover_state(self, state) -> None:
         """Read decision_reason and decision_details from the cover state."""
@@ -101,6 +93,8 @@ class SimpleSmartCoverDecisionSensor(SimpleSmartCoverStateSensorMixin, SensorEnt
 class SimpleSmartCoverPauseSensor(SimpleSmartCoverPauseEntityMixin, BinarySensorEntity):
     """Binary sensor showing whether the manual activity pause is active."""
 
+    _attr_has_entity_name = True
+    _attr_translation_key = "pause_active"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
@@ -109,11 +103,6 @@ class SimpleSmartCoverPauseSensor(SimpleSmartCoverPauseEntityMixin, BinarySensor
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
         self._attr_unique_id = f"{config_entry.entry_id}_pause_active"
-
-    @property
-    def name(self) -> str | None:
-        """Return the entity name."""
-        return f"{self._config_entry.title} {SUFFIX_PAUSE_ACTIVE}"
 
     @property
     def is_on(self) -> bool | None:
@@ -127,6 +116,8 @@ class SimpleSmartCoverPauseSensor(SimpleSmartCoverPauseEntityMixin, BinarySensor
 class SimpleSmartCoverPauseRemainingSensor(SimpleSmartCoverPauseEntityMixin, SensorEntity):
     """Sensor showing the remaining manual activity pause minutes."""
 
+    _attr_has_entity_name = True
+    _attr_translation_key = "pause_remaining"
     _attr_native_unit_of_measurement = "min"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -136,11 +127,6 @@ class SimpleSmartCoverPauseRemainingSensor(SimpleSmartCoverPauseEntityMixin, Sen
         self._config_entry = config_entry
         self._entry_id = config_entry.entry_id
         self._attr_unique_id = f"{config_entry.entry_id}_pause_remaining"
-
-    @property
-    def name(self) -> str | None:
-        """Return the entity name."""
-        return f"{self._config_entry.title} {SUFFIX_PAUSE_REMAINING}"
 
     @property
     def native_value(self) -> int | None:

@@ -12,13 +12,16 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
 from .const import (
     CONF_COVERS,
-    CONF_NAME,
+    CONF_MORNING_TIME,
+    CONF_QUIET_END,
+    CONF_QUIET_START,
     CONF_WINDOW_ORIENTATION,
     COPY_SUFFIX,
     DOMAIN,
@@ -31,7 +34,7 @@ from .schemas import (
 )
 
 # Time-format fields validated across config and options flow.
-_TIME_FIELDS = ("morning_time", "quiet_start", "quiet_end")
+_TIME_FIELDS = (CONF_MORNING_TIME, CONF_QUIET_START, CONF_QUIET_END)
 
 
 # ---------------------------------------------------------------------------

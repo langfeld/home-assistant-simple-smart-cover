@@ -13,6 +13,7 @@ import voluptuous as vol
 
 from homeassistant.components.cover import DOMAIN as COVER_DOMAIN
 from homeassistant.components.weather import DOMAIN as WEATHER_DOMAIN
+from homeassistant.const import CONF_NAME
 from homeassistant.helpers import selector
 
 from .const import (
@@ -28,7 +29,6 @@ from .const import (
     CONF_MIN_POSITION_CHANGE,
     CONF_MIN_SUN_ELEVATION,
     CONF_MORNING_TIME,
-    CONF_NAME,
     CONF_POSITION_CLOUDY,
     CONF_POSITION_EVENING,
     CONF_POSITION_SUNNY_IN_ANGLE,
