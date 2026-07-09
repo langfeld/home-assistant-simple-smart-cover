@@ -150,6 +150,20 @@ REEVALUATE_INTERVAL_TRACKING = {
 COPY_SUFFIX = "Copy"
 
 # ---------------------------------------------------------------------------
+# Entity name suffixes
+#
+# Used via _attr_name together with _attr_has_entity_name = True so HA shows
+# "<group name> <suffix>" (e.g. "Kueche Pause Active"). Kept in English for
+# stable entity names across HA language settings.
+# ---------------------------------------------------------------------------
+
+ENTITY_NAME_TARGET_POSITION = "Target Position"
+ENTITY_NAME_DECISION = "Decision"
+ENTITY_NAME_PAUSE_ACTIVE = "Pause Active"
+ENTITY_NAME_PAUSE_REMAINING = "Pause Remaining"
+ENTITY_NAME_RESET_PAUSE = "Reset Pause"
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

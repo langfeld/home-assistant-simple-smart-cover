@@ -10,9 +10,8 @@ The first two track cover state changes via SimpleSmartCoverStateSensorMixin;
 the pause sensors use SimpleSmartCoverPauseEntityMixin which adds a periodic
 refresh so expired pauses clear without a cover state change.
 
-Entity names are translatable via ``_attr_translation_key`` and the
-``entity`` section in the translation files. With ``_attr_has_entity_name``
-set, HA prefixes each name with the device (group) name automatically.
+Entity names are set via ``_attr_name`` with ``_attr_has_entity_name = True``,
+so HA displays each as "<group name> <suffix>" (e.g. "Kitchen Pause Active").
 """
 
 from __future__ import annotations
@@ -24,6 +23,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import (
+    ENTITY_NAME_DECISION,
+    ENTITY_NAME_PAUSE_ACTIVE,
+    ENTITY_NAME_PAUSE_REMAINING,
+    ENTITY_NAME_TARGET_POSITION,
+)
 from .entities import (
     SimpleSmartCoverPauseEntityMixin,
     SimpleSmartCoverStateSensorMixin,
@@ -50,7 +55,7 @@ class SimpleSmartCoverTargetPositionSensor(SimpleSmartCoverStateSensorMixin, Sen
     """Sensor showing the computed target position in percent."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "target_position"
+    _attr_name = ENTITY_NAME_TARGET_POSITION
     _attr_native_unit_of_measurement = "%"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -72,7 +77,7 @@ class SimpleSmartCoverDecisionSensor(SimpleSmartCoverStateSensorMixin, SensorEnt
     """Diagnostic sensor showing the decision reason and details."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "decision"
+    _attr_name = ENTITY_NAME_DECISION
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
@@ -94,7 +99,7 @@ class SimpleSmartCoverPauseSensor(SimpleSmartCoverPauseEntityMixin, BinarySensor
     """Binary sensor showing whether the manual activity pause is active."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "pause_active"
+    _attr_name = ENTITY_NAME_PAUSE_ACTIVE
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
@@ -117,7 +122,7 @@ class SimpleSmartCoverPauseRemainingSensor(SimpleSmartCoverPauseEntityMixin, Sen
     """Sensor showing the remaining manual activity pause minutes."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "pause_remaining"
+    _attr_name = ENTITY_NAME_PAUSE_REMAINING
     _attr_native_unit_of_measurement = "min"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 

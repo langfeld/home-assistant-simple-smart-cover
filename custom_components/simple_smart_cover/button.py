@@ -2,9 +2,6 @@
 
 A single config button per cover group that resets the manual activity pause
 immediately, so the user does not have to wait for the pause timer to expire.
-
-Entity names are translatable via ``_attr_translation_key`` and the ``entity``
-section in the translation files.
 """
 
 from __future__ import annotations
@@ -15,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import ENTITY_NAME_RESET_PAUSE
 from .entities import SimpleSmartCoverDeviceMixin
 
 
@@ -31,7 +29,7 @@ class SimpleSmartCoverPauseResetButton(SimpleSmartCoverDeviceMixin, ButtonEntity
     """Button that resets the manual activity pause immediately."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "reset_pause"
+    _attr_name = ENTITY_NAME_RESET_PAUSE
     _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
