@@ -153,15 +153,15 @@ COPY_SUFFIX = "Copy"
 # Entity name suffixes
 #
 # Used via _attr_name together with _attr_has_entity_name = True so HA shows
-# "<group name> <suffix>" (e.g. "Kueche Pause Active"). Kept in English for
-# stable entity names across HA language settings.
+# "<group name> <suffix>" (z.B. "Kueche Pause aktiv"). German matches the
+# previous behaviour; the cover entity itself stays unnamed (device only).
 # ---------------------------------------------------------------------------
 
-ENTITY_NAME_TARGET_POSITION = "Target Position"
-ENTITY_NAME_DECISION = "Decision"
-ENTITY_NAME_PAUSE_ACTIVE = "Pause Active"
-ENTITY_NAME_PAUSE_REMAINING = "Pause Remaining"
-ENTITY_NAME_RESET_PAUSE = "Reset Pause"
+ENTITY_NAME_TARGET_POSITION = "Zielposition"
+ENTITY_NAME_DECISION = "Entscheidung"
+ENTITY_NAME_PAUSE_ACTIVE = "Pause aktiv"
+ENTITY_NAME_PAUSE_REMAINING = "Pause verbleibend"
+ENTITY_NAME_RESET_PAUSE = "Pause zurücksetzen"
 
 # ---------------------------------------------------------------------------
 # Helpers
