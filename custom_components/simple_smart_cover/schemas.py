@@ -263,7 +263,7 @@ def build_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=defaults.get(
                     CONF_MANUAL_ACTIVITY_DURATION, DEFAULT_MANUAL_ACTIVITY_DURATION
                 ),
-            ): _slider(1, 120, 1, "min"),
+            ): _slider(1, 180, 1, "min"),
             vol.Optional(
                 CONF_TEST_MODE,
                 default=defaults.get(CONF_TEST_MODE, False),

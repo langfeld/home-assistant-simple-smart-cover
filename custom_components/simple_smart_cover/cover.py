@@ -41,6 +41,11 @@ _LOGGER = logging.getLogger(__name__)
 # Grace period after our own service call during which cover state changes are
 # treated as our own movement rather than a manual intervention.
 _OWN_COMMAND_GRACE = timedelta(seconds=120)
+# Maximum window after our own command during which a position-match fallback
+# is used to identify our own movement for slow covers. After this window the
+# entry is cleared so manual movements are always detected, even if they end
+# up at the same position the automation previously requested.
+_OWN_COMMAND_WINDOW = timedelta(minutes=10)
 # Position tolerance (percent) within which a cover is considered to match the
 # position we requested.
 _OWN_POSITION_TOLERANCE = 3
@@ -185,16 +190,25 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
             if now < sent_time + _OWN_COMMAND_GRACE:
                 # Movement shortly after our own command: assume it is ours.
                 return
-            try:
-                current_pos = int(new_state.attributes.get("current_position", -1))
-                if (
-                    current_pos >= 0
-                    and abs(current_pos - sent_pos) <= _OWN_POSITION_TOLERANCE
-                ):
-                    # Position matches what we requested: not a manual move.
-                    return
-            except (ValueError, TypeError):
-                pass
+            if now < sent_time + _OWN_COMMAND_WINDOW:
+                # After grace but within the command window: a position match
+                # is still considered our own movement (fallback for slow
+                # covers that take longer than the grace period to finish).
+                try:
+                    current_pos = int(new_state.attributes.get("current_position", -1))
+                    if (
+                        current_pos >= 0
+                        and abs(current_pos - sent_pos) <= _OWN_POSITION_TOLERANCE
+                    ):
+                        # Position matches what we requested: not a manual move.
+                        return
+                except (ValueError, TypeError):
+                    pass
+            else:
+                # Window expired: clear the stale entry so future movements
+                # are correctly detected as manual even if they end up at the
+                # same position the automation previously requested.
+                self._last_sent_positions.pop(entity_id, None)
 
         # Movement was not initiated by us: start the manual activity pause.
         duration_minutes = self._data.get(
