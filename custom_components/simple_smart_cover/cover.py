@@ -161,14 +161,45 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
 
     # -- manual activity pause detection ----------------------------------
 
+    @staticmethod
+    def _is_movement_toward_target(event, sent_pos: int) -> bool:
+        """Return True if the cover is moving toward our requested position.
+
+        Compares the old and new positions from the state-change event against
+        the position we requested. If the new position is closer to the target
+        (within tolerance) the movement is ours. If the cover reversed
+        direction and moves away from the target, it is a manual override and
+        the method returns False. When positions cannot be determined the
+        method defaults to True (assume our own movement) to avoid false
+        positives during normal cover operation.
+        """
+        old_state = event.data.get("old_state")
+        new_state = event.data.get("new_state")
+        if old_state is None or new_state is None:
+            return True
+        try:
+            old_pos = int(old_state.attributes.get("current_position", -1))
+            new_pos = int(new_state.attributes.get("current_position", -1))
+        except (ValueError, TypeError):
+            return True
+        if old_pos < 0 or new_pos < 0:
+            return True
+        old_dist = abs(old_pos - sent_pos)
+        new_dist = abs(new_pos - sent_pos)
+        return new_dist <= old_dist + _OWN_POSITION_TOLERANCE
+
     @callback
     def _async_cover_state_changed(self, event) -> None:
         """Detect manual or external cover movements and start a pause.
 
         A state change is considered our own movement (and therefore ignored)
-        when it happens within the grace period after we sent a command, or when
-        the reported position matches the position we requested. Everything else
-        is treated as a manual intervention and starts the pause timer.
+        when it happens within the grace period after we sent a command and the
+        cover is moving toward the position we requested. A direction reversal
+        during the grace period (the cover moves away from our requested
+        position) is detected as a manual override. After the grace period a
+        position match within the command window is still treated as our own
+        movement (fallback for slow covers). Everything else is treated as a
+        manual intervention and starts the pause timer.
         """
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             return
@@ -188,9 +219,13 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
         if last_sent is not None:
             sent_time, sent_pos = last_sent
             if now < sent_time + _OWN_COMMAND_GRACE:
-                # Movement shortly after our own command: assume it is ours.
-                return
-            if now < sent_time + _OWN_COMMAND_WINDOW:
+                # Movement shortly after our own command. Usually this is the
+                # cover responding to our command, but a direction reversal
+                # (moving away from the requested position) is a manual
+                # override and must start the pause.
+                if self._is_movement_toward_target(event, sent_pos):
+                    return
+            elif now < sent_time + _OWN_COMMAND_WINDOW:
                 # After grace but within the command window: a position match
                 # is still considered our own movement (fallback for slow
                 # covers that take longer than the grace period to finish).
