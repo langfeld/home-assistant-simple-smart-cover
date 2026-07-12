@@ -91,19 +91,20 @@ _SET_POSITIONS_SCHEMA = {
 # Voluptuous schema for the set_schedule entity service. Each field is
 # optional; only the provided values are written to the config entry options.
 # Time fields are validated as HH:MM:SS strings.
+def _validate_time(value: str) -> str:
+    """Validate a time string in HH:MM:SS format for voluptuous."""
+    if not is_valid_time(value):
+        raise vol.Invalid(f"Invalid time format: {value}, expected HH:MM:SS")
+    return value
+
+
 _SET_SCHEDULE_SCHEMA = {
-    vol.Optional(CONF_MORNING_TIME): vol.All(
-        str, vol.Validate(lambda v: v if is_valid_time(v) else vol.INVALID)
-    ),
+    vol.Optional(CONF_MORNING_TIME): vol.All(str, _validate_time),
     vol.Optional(CONF_ENABLE_MORNING): bool,
     vol.Optional(CONF_ENABLE_EVENING): bool,
     vol.Optional(CONF_ENABLE_QUIET_MODE): bool,
-    vol.Optional(CONF_QUIET_START): vol.All(
-        str, vol.Validate(lambda v: v if is_valid_time(v) else vol.INVALID)
-    ),
-    vol.Optional(CONF_QUIET_END): vol.All(
-        str, vol.Validate(lambda v: v if is_valid_time(v) else vol.INVALID)
-    ),
+    vol.Optional(CONF_QUIET_START): vol.All(str, _validate_time),
+    vol.Optional(CONF_QUIET_END): vol.All(str, _validate_time),
 }
 
 # Grace period after our own service call during which cover state changes are
