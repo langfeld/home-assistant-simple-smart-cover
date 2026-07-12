@@ -759,7 +759,7 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
         """
         from .sun_calc import get_sun_in_window_time
 
-        data = self._data()
+        data = self._data
         orientation = data.get(
             CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION
         )
