@@ -39,13 +39,16 @@
         "data": {
           "name": "Name der Gruppe",
           "covers": "Rollläden",
-          "weather_entity": "Wetter-Entity"
+          "weather_entity": "Wetter-Entity",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "name": "Name der Rollladen-Gruppe. Daraus wird die Entity-ID erzeugt.",
           "covers": "Alle Rollläden, die gemeinsam gesteuert werden sollen.",
-          "weather_entity": "Home Assistant Wetter-Entity für aktuelle Bedingungen und Temperatur."
-        }
+          "weather_entity": "Home Assistant Wetter-Entity für aktuelle Bedingungen und Temperatur.",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "create_schedule": {
         "title": "Zeitplan",
@@ -56,7 +59,8 @@
           "enable_evening": "Abends aktivieren",
           "enable_quiet_mode": "Ruhemodus aktivieren",
           "quiet_start": "Ruhemodus Beginn",
-          "quiet_end": "Ruhemodus Ende"
+          "quiet_end": "Ruhemodus Ende",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "morning_time": "Morgendliche Hochfahrzeit. Liegt diese innerhalb der Ruhezeit, wird sie automatisch auf das Ende der Ruhezeit verschoben.",
@@ -64,8 +68,10 @@
           "enable_evening": "Aktiviert den abendlichen Trigger bei Sonnenuntergang, der die Rollläden auf die Abend-Position fährt.",
           "enable_quiet_mode": "In der Ruhezeit werden keine Bewegungen ausgeführt.",
           "quiet_start": "Beginn der Ruhezeit (HH:MM:SS).",
-          "quiet_end": "Ende der Ruhezeit (HH:MM:SS)."
-        }
+          "quiet_end": "Ende der Ruhezeit (HH:MM:SS).",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "create_sun_temp": {
         "title": "Sonne & Temperatur",
@@ -78,7 +84,8 @@
           "temp_source": "Temperatur-Sensor (optional)",
           "use_forecast_max_temp": "Tageshöchsttemperatur verwenden",
           "temp_forecast_entity": "Tageshöchsttemperatur-Sensor (optional)",
-          "cloudy_conditions": "Bewölkte Wetterbedingungen"
+          "cloudy_conditions": "Bewölkte Wetterbedingungen",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "window_orientation": "Himmelsrichtung des Fensters in Grad: 0 = Nord, 90 = Ost, 180 = Süd, 270 = West.",
@@ -88,8 +95,10 @@
           "temp_source": "Optionaler Temperatur-Sensor. Falls nicht angegeben, wird die Temperatur der Wetter-Entity genutzt.",
           "use_forecast_max_temp": "Aktivieren, um vorausschauend zu entscheiden: die Integration berechnet, wann die Sonne heute ins Fenster fällt, und nutzt die vorhergesagte Temperatur und Wetterbedingung zu diesem Zeitpunkt. Fallback auf Tageshöchsttemperatur, falls der Forecast nicht ermittelbar ist.",
           "temp_forecast_entity": "Optionaler Sensor für die heutige Höchsttemperatur (Fallback, falls der stündliche Forecast nicht ermittelbar ist).",
-          "cloudy_conditions": "Wetterbedingungen, bei denen die Rollläden hochfahren sollen."
-        }
+          "cloudy_conditions": "Wetterbedingungen, bei denen die Rollläden hochfahren sollen.",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "create_positions": {
         "title": "Positionen",
@@ -99,15 +108,18 @@
           "position_sunny_outside_angle": "Position bei Sonne außerhalb oder zu kalt",
           "position_cloudy": "Position bei bewölktem Wetter",
           "position_evening": "Abend-Position",
-          "invert_positions": "Positionen umkehren"
+          "invert_positions": "Positionen umkehren",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "position_sunny_in_angle": "Zielposition, wenn die Sonne ins Fenster scheint und es warm ist.",
           "position_sunny_outside_angle": "Zielposition, wenn die Sonne nicht direkt ins Fenster scheint oder es zu kalt ist.",
           "position_cloudy": "Zielposition bei bewölktem Wetter.",
           "position_evening": "Zielposition am Abend.",
-          "invert_positions": "Vertauscht die Bedeutung der Positionen: 0% = unten, 100% = oben."
-        }
+          "invert_positions": "Vertauscht die Bedeutung der Positionen: 0% = unten, 100% = oben.",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "create_behavior": {
         "title": "Verhalten",
@@ -131,7 +143,8 @@
           "presence_sensor": "Optionaler Binary-Sensor (z. B. Bewegungs- oder Anwesenheitsmelder). Sobald eine manuelle Pause aktiv ist, hält Anwesenheit diese Pause offen und verlängert sie um den unten angegebenen Wert (Nachlauf).",
           "presence_pause_extension": "Nachlauf in Minuten, nachdem der Anwesenheits-Sensor 'off' meldet. 0 = kein Nachlauf, nur sticky solange Anwesenheit aktiv ist.",
           "test_mode": "Aktiv: Berechnungen laufen, aber die Rollläden bewegen sich nicht."
-        }
+        },
+        "submit": "Speichern"
       }
     }
   },
@@ -147,13 +160,16 @@
         "data": {
           "name": "Name der Gruppe",
           "covers": "Rollläden",
-          "weather_entity": "Wetter-Entity"
+          "weather_entity": "Wetter-Entity",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "name": "Name der Rollladen-Gruppe. Daraus wird die Entity-ID erzeugt.",
           "covers": "Alle Rollläden, die gemeinsam gesteuert werden sollen.",
-          "weather_entity": "Home Assistant Wetter-Entity für aktuelle Bedingungen und Temperatur."
-        }
+          "weather_entity": "Home Assistant Wetter-Entity für aktuelle Bedingungen und Temperatur.",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "schedule": {
         "title": "Zeitplan",
@@ -164,7 +180,8 @@
           "enable_evening": "Abends aktivieren",
           "enable_quiet_mode": "Ruhemodus aktivieren",
           "quiet_start": "Ruhemodus Beginn",
-          "quiet_end": "Ruhemodus Ende"
+          "quiet_end": "Ruhemodus Ende",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "morning_time": "Morgendliche Hochfahrzeit. Liegt diese innerhalb der Ruhezeit, wird sie automatisch auf das Ende der Ruhezeit verschoben.",
@@ -172,8 +189,10 @@
           "enable_evening": "Aktiviert den abendlichen Trigger bei Sonnenuntergang, der die Rollläden auf die Abend-Position fährt.",
           "enable_quiet_mode": "In der Ruhezeit werden keine Bewegungen ausgeführt.",
           "quiet_start": "Beginn der Ruhezeit (HH:MM:SS).",
-          "quiet_end": "Ende der Ruhezeit (HH:MM:SS)."
-        }
+          "quiet_end": "Ende der Ruhezeit (HH:MM:SS).",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "sun_temp": {
         "title": "Sonne & Temperatur",
@@ -186,7 +205,8 @@
           "temp_source": "Temperatur-Sensor (optional)",
           "use_forecast_max_temp": "Tageshöchsttemperatur verwenden",
           "temp_forecast_entity": "Tageshöchsttemperatur-Sensor (optional)",
-          "cloudy_conditions": "Bewölkte Wetterbedingungen"
+          "cloudy_conditions": "Bewölkte Wetterbedingungen",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "window_orientation": "Himmelsrichtung des Fensters in Grad: 0 = Nord, 90 = Ost, 180 = Süd, 270 = West.",
@@ -196,8 +216,10 @@
           "temp_source": "Optionaler Temperatur-Sensor. Falls nicht angegeben, wird die Temperatur der Wetter-Entity genutzt.",
           "use_forecast_max_temp": "Aktivieren, um vorausschauend zu entscheiden: die Integration berechnet, wann die Sonne heute ins Fenster fällt, und nutzt die vorhergesagte Temperatur und Wetterbedingung zu diesem Zeitpunkt. Fallback auf Tageshöchsttemperatur, falls der Forecast nicht ermittelbar ist.",
           "temp_forecast_entity": "Optionaler Sensor für die heutige Höchsttemperatur (Fallback, falls der stündliche Forecast nicht ermittelbar ist).",
-          "cloudy_conditions": "Wetterbedingungen, bei denen die Rollläden hochfahren sollen."
-        }
+          "cloudy_conditions": "Wetterbedingungen, bei denen die Rollläden hochfahren sollen.",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "positions": {
         "title": "Positionen",
@@ -207,15 +229,18 @@
           "position_sunny_outside_angle": "Position bei Sonne außerhalb oder zu kalt",
           "position_cloudy": "Position bei bewölktem Wetter",
           "position_evening": "Abend-Position",
-          "invert_positions": "Positionen umkehren"
+          "invert_positions": "Positionen umkehren",
+          "save_and_exit": "Speichern und beenden"
         },
         "data_description": {
           "position_sunny_in_angle": "Zielposition, wenn die Sonne ins Fenster scheint und es warm ist.",
           "position_sunny_outside_angle": "Zielposition, wenn die Sonne nicht direkt ins Fenster scheint oder es zu kalt ist.",
           "position_cloudy": "Zielposition bei bewölktem Wetter.",
           "position_evening": "Zielposition am Abend.",
-          "invert_positions": "Vertauscht die Bedeutung der Positionen: 0% = unten, 100% = oben."
-        }
+          "invert_positions": "Vertauscht die Bedeutung der Positionen: 0% = unten, 100% = oben.",
+          "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
+        },
+        "submit": "Weiter"
       },
       "behavior": {
         "title": "Verhalten",
@@ -239,7 +264,8 @@
           "presence_sensor": "Optionaler Binary-Sensor (z. B. Bewegungs- oder Anwesenheitsmelder). Sobald eine manuelle Pause aktiv ist, hält Anwesenheit diese Pause offen und verlängert sie um den unten angegebenen Wert (Nachlauf).",
           "presence_pause_extension": "Nachlauf in Minuten, nachdem der Anwesenheits-Sensor 'off' meldet. 0 = kein Nachlauf, nur sticky solange Anwesenheit aktiv ist.",
           "test_mode": "Aktiv: Berechnungen laufen, aber die Rollläden bewegen sich nicht."
-        }
+        },
+        "submit": "Speichern"
       }
     }
   }

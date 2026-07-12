@@ -28,6 +28,7 @@ from .const import (
     is_valid_time,
 )
 from .schemas import (
+    SAVE_AND_EXIT_KEY,
     STEP_BEHAVIOR_OPTIONAL_KEYS,
     STEP_SUN_TEMP_OPTIONAL_KEYS,
     build_duplicate_schema,
@@ -149,6 +150,14 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     # -- create flow: 5 chained steps --------------------------------------
 
+    def _finalize_create(self) -> FlowResult:
+        """Create the config entry from the collected data."""
+        null_cleared_optional_keys(self._create_data)
+        return self.async_create_entry(
+            title=self._create_data[CONF_NAME],
+            data=self._create_data,
+        )
+
     async def async_step_create_new(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -156,16 +165,19 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             if user_input[CONF_NAME] in _get_existing_names(self.hass):
                 errors[CONF_NAME] = "name_exists"
 
             if not errors:
                 self._create_data.update(user_input)
+                if save_and_exit:
+                    return self._finalize_create()
                 return await self.async_step_create_schedule()
 
         return self.async_show_form(
             step_id="create_new",
-            data_schema=build_schema_basics(),
+            data_schema=build_schema_basics(self._create_data),
             errors=errors,
         )
 
@@ -176,9 +188,12 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             errors = _validate_time_fields(user_input)
             if not errors:
                 self._create_data.update(user_input)
+                if save_and_exit:
+                    return self._finalize_create()
                 return await self.async_step_create_sun_temp()
 
         return self.async_show_form(
@@ -192,8 +207,11 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Step 3/5: window orientation, sun angles, temperature and forecast."""
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             null_cleared_optional_keys(user_input, STEP_SUN_TEMP_OPTIONAL_KEYS)
             self._create_data.update(user_input)
+            if save_and_exit:
+                return self._finalize_create()
             return await self.async_step_create_positions()
 
         return self.async_show_form(
@@ -206,7 +224,10 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Step 4/5: target positions for each situation."""
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             self._create_data.update(user_input)
+            if save_and_exit:
+                return self._finalize_create()
             return await self.async_step_create_behavior()
 
         return self.async_show_form(
@@ -221,10 +242,7 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             null_cleared_optional_keys(user_input, STEP_BEHAVIOR_OPTIONAL_KEYS)
             self._create_data.update(user_input)
-            return self.async_create_entry(
-                title=self._create_data[CONF_NAME],
-                data=self._create_data,
-            )
+            return self._finalize_create()
 
         return self.async_show_form(
             step_id="create_behavior",
@@ -349,6 +367,22 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
 
     # -- options flow: 5 chained steps ------------------------------------
 
+    def _finalize_options(self) -> FlowResult:
+        """Create the options entry from the collected data.
+
+        Handles the title update on name change and removes CONF_NAME from
+        the options data (it lives in entry data, not options).
+        """
+        name = self._options_data.get(CONF_NAME)
+        if name is not None and name != self._config_entry.title:
+            self.hass.config_entries.async_update_entry(
+                self._config_entry,
+                title=name,
+                data={**self._config_entry.data, CONF_NAME: name},
+            )
+        self._options_data.pop(CONF_NAME, None)
+        return self.async_create_entry(title="", data=self._options_data)
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -356,6 +390,7 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             name = user_input.get(CONF_NAME)
             if name and name in _get_existing_names(
                 self.hass, exclude_entry_id=self._config_entry.entry_id
@@ -364,6 +399,8 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
 
             if not errors:
                 self._options_data.update(user_input)
+                if save_and_exit:
+                    return self._finalize_options()
                 return await self.async_step_schedule()
 
         return self.async_show_form(
@@ -379,9 +416,12 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             errors = _validate_time_fields(user_input)
             if not errors:
                 self._options_data.update(user_input)
+                if save_and_exit:
+                    return self._finalize_options()
                 return await self.async_step_sun_temp()
 
         return self.async_show_form(
@@ -395,8 +435,11 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Step 3/5: window orientation, sun angles, temperature and forecast."""
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             null_cleared_optional_keys(user_input, STEP_SUN_TEMP_OPTIONAL_KEYS)
             self._options_data.update(user_input)
+            if save_and_exit:
+                return self._finalize_options()
             return await self.async_step_positions()
 
         return self.async_show_form(
@@ -409,7 +452,10 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Step 4/5: target positions for each situation."""
         if user_input is not None:
+            save_and_exit = user_input.pop(SAVE_AND_EXIT_KEY, False)
             self._options_data.update(user_input)
+            if save_and_exit:
+                return self._finalize_options()
             return await self.async_step_behavior()
 
         return self.async_show_form(
@@ -424,20 +470,7 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             null_cleared_optional_keys(user_input, STEP_BEHAVIOR_OPTIONAL_KEYS)
             self._options_data.update(user_input)
-
-            # A name change updates the entry title and data[CONF_NAME].
-            name = self._options_data.get(CONF_NAME)
-            if name is not None and name != self._config_entry.title:
-                self.hass.config_entries.async_update_entry(
-                    self._config_entry,
-                    title=name,
-                    data={**self._config_entry.data, CONF_NAME: name},
-                )
-
-            # CONF_NAME is handled above; keep it out of options data.
-            self._options_data.pop(CONF_NAME, None)
-
-            return self.async_create_entry(title="", data=self._options_data)
+            return self._finalize_options()
 
         return self.async_show_form(
             step_id="behavior",

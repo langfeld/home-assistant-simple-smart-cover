@@ -39,13 +39,16 @@
         "data": {
           "name": "Group name",
           "covers": "Covers",
-          "weather_entity": "Weather entity"
+          "weather_entity": "Weather entity",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "name": "Name of the cover group. The entity ID is derived from this.",
           "covers": "All covers that should be controlled together.",
-          "weather_entity": "Home Assistant weather entity for current conditions and temperature."
-        }
+          "weather_entity": "Home Assistant weather entity for current conditions and temperature.",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "create_schedule": {
         "title": "Schedule",
@@ -56,7 +59,8 @@
           "enable_evening": "Enable evening",
           "enable_quiet_mode": "Enable quiet mode",
           "quiet_start": "Quiet mode start",
-          "quiet_end": "Quiet mode end"
+          "quiet_end": "Quiet mode end",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "morning_time": "Morning open time. If this falls inside the quiet window it is automatically shifted to the end of quiet time.",
@@ -64,8 +68,10 @@
           "enable_evening": "Enables the sunset trigger that moves the covers to the evening position.",
           "enable_quiet_mode": "During quiet time no movements are executed.",
           "quiet_start": "Start of the quiet period (HH:MM:SS).",
-          "quiet_end": "End of the quiet period (HH:MM:SS)."
-        }
+          "quiet_end": "End of the quiet period (HH:MM:SS).",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "create_sun_temp": {
         "title": "Sun & Temperature",
@@ -78,7 +84,8 @@
           "temp_source": "Temperature sensor (optional)",
           "use_forecast_max_temp": "Use daily maximum temperature",
           "temp_forecast_entity": "Daily max temperature sensor (optional)",
-          "cloudy_conditions": "Cloudy weather conditions"
+          "cloudy_conditions": "Cloudy weather conditions",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "window_orientation": "Compass direction of the window in degrees: 0 = North, 90 = East, 180 = South, 270 = West.",
@@ -88,8 +95,10 @@
           "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
           "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
           "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
-          "cloudy_conditions": "Weather conditions under which the covers should open."
-        }
+          "cloudy_conditions": "Weather conditions under which the covers should open.",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "create_positions": {
         "title": "Positions",
@@ -99,15 +108,18 @@
           "position_sunny_outside_angle": "Position for sun outside or too cold",
           "position_cloudy": "Position for cloudy weather",
           "position_evening": "Evening position",
-          "invert_positions": "Invert positions"
+          "invert_positions": "Invert positions",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "position_sunny_in_angle": "Target position when the sun shines into the window and it is warm.",
           "position_sunny_outside_angle": "Target position when the sun is not directly in the window or it is too cold.",
           "position_cloudy": "Target position for cloudy weather.",
           "position_evening": "Target position in the evening.",
-          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up."
-        }
+          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up.",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "create_behavior": {
         "title": "Behavior",
@@ -131,7 +143,8 @@
           "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
           "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
           "test_mode": "Active: calculations run but the covers do not move."
-        }
+        },
+        "submit": "Save"
       }
     }
   },
@@ -147,13 +160,16 @@
         "data": {
           "name": "Group name",
           "covers": "Covers",
-          "weather_entity": "Weather entity"
+          "weather_entity": "Weather entity",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "name": "Name of the cover group. The entity ID is derived from this.",
           "covers": "All covers that should be controlled together.",
-          "weather_entity": "Home Assistant weather entity for current conditions and temperature."
-        }
+          "weather_entity": "Home Assistant weather entity for current conditions and temperature.",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "schedule": {
         "title": "Schedule",
@@ -164,7 +180,8 @@
           "enable_evening": "Enable evening",
           "enable_quiet_mode": "Enable quiet mode",
           "quiet_start": "Quiet mode start",
-          "quiet_end": "Quiet mode end"
+          "quiet_end": "Quiet mode end",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "morning_time": "Morning open time. If this falls inside the quiet window it is automatically shifted to the end of quiet time.",
@@ -172,8 +189,10 @@
           "enable_evening": "Enables the sunset trigger that moves the covers to the evening position.",
           "enable_quiet_mode": "During quiet time no movements are executed.",
           "quiet_start": "Start of the quiet period (HH:MM:SS).",
-          "quiet_end": "End of the quiet period (HH:MM:SS)."
-        }
+          "quiet_end": "End of the quiet period (HH:MM:SS).",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "sun_temp": {
         "title": "Sun & Temperature",
@@ -186,7 +205,8 @@
           "temp_source": "Temperature sensor (optional)",
           "use_forecast_max_temp": "Use daily maximum temperature",
           "temp_forecast_entity": "Daily max temperature sensor (optional)",
-          "cloudy_conditions": "Cloudy weather conditions"
+          "cloudy_conditions": "Cloudy weather conditions",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "window_orientation": "Compass direction of the window in degrees: 0 = North, 90 = East, 180 = South, 270 = West.",
@@ -196,8 +216,10 @@
           "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
           "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
           "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
-          "cloudy_conditions": "Weather conditions under which the covers should open."
-        }
+          "cloudy_conditions": "Weather conditions under which the covers should open.",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "positions": {
         "title": "Positions",
@@ -207,15 +229,18 @@
           "position_sunny_outside_angle": "Position for sun outside or too cold",
           "position_cloudy": "Position for cloudy weather",
           "position_evening": "Evening position",
-          "invert_positions": "Invert positions"
+          "invert_positions": "Invert positions",
+          "save_and_exit": "Save and exit"
         },
         "data_description": {
           "position_sunny_in_angle": "Target position when the sun shines into the window and it is warm.",
           "position_sunny_outside_angle": "Target position when the sun is not directly in the window or it is too cold.",
           "position_cloudy": "Target position for cloudy weather.",
           "position_evening": "Target position in the evening.",
-          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up."
-        }
+          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up.",
+          "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
+        },
+        "submit": "Next"
       },
       "behavior": {
         "title": "Behavior",
@@ -239,7 +264,8 @@
           "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
           "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
           "test_mode": "Active: calculations run but the covers do not move."
-        }
+        },
+        "submit": "Save"
       }
     }
   }

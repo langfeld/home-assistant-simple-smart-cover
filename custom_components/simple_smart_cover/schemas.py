@@ -76,6 +76,10 @@ OPTIONAL_ENTITY_KEYS = [
 STEP_SUN_TEMP_OPTIONAL_KEYS = [CONF_TEMP_SOURCE, CONF_TEMP_FORECAST_ENTITY]
 STEP_BEHAVIOR_OPTIONAL_KEYS = [CONF_PRESENCE_SENSOR]
 
+# Flow-control flag (not a real config key) that lets the user save and exit
+# the multi-step flow from any intermediate step.
+SAVE_AND_EXIT_KEY = "save_and_exit"
+
 
 # ---------------------------------------------------------------------------
 # Selector factories
@@ -167,6 +171,7 @@ def build_schema_basics(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Required(
                 CONF_WEATHER_ENTITY, default=defaults.get(CONF_WEATHER_ENTITY)
             ): _weather_selector(),
+            vol.Optional(SAVE_AND_EXIT_KEY, default=False): bool,
         }
     )
 
@@ -198,6 +203,7 @@ def build_schema_schedule(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_QUIET_END,
                 default=defaults.get(CONF_QUIET_END, "07:00:00"),
             ): str,
+            vol.Optional(SAVE_AND_EXIT_KEY, default=False): bool,
         }
     )
 
@@ -248,6 +254,7 @@ def build_schema_sun_temp(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     mode=selector.SelectSelectorMode.LIST,
                 )
             ),
+            vol.Optional(SAVE_AND_EXIT_KEY, default=False): bool,
         }
     )
 
@@ -282,6 +289,7 @@ def build_schema_positions(defaults: dict[str, Any] | None = None) -> vol.Schema
                 CONF_INVERT_POSITIONS,
                 default=defaults.get(CONF_INVERT_POSITIONS, False),
             ): bool,
+            vol.Optional(SAVE_AND_EXIT_KEY, default=False): bool,
         }
     )
 
