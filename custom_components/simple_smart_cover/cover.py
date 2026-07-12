@@ -108,7 +108,7 @@ async def async_setup_entry(
     """Create the virtual cover entity for the config entry."""
     async_add_entities([SimpleSmartCoverEntity(hass, config_entry)])
 
-    platform = async_get_current_platform(hass)
+    platform = async_get_current_platform()
     platform.async_register_entity_service(
         SERVICE_SET_POSITIONS,
         _SET_POSITIONS_SCHEMA,
