@@ -268,5 +268,25 @@
         "submit": "Speichern"
       }
     }
+  },
+  "services": {
+    "set_positions": {
+      "name": "Positionen festlegen",
+      "description": "Aktualisiert die konfigurierten Zielpositionen einer Rollladengruppe und wertet sofort neu aus.",
+      "fields": {
+        "position_sunny_in_angle": {
+          "name": "Position bei Sonne im Winkel",
+          "description": "Zielposition, wenn die Sonne ins Fenster scheint und es warm ist."
+        },
+        "position_sunny_outside_angle": {
+          "name": "Position bei Sonne außerhalb",
+          "description": "Zielposition, wenn die Sonne nicht direkt ins Fenster scheint oder es zu kalt ist."
+        },
+        "position_cloudy": {
+          "name": "Position bei bewölkt",
+          "description": "Zielposition bei bewölktem Wetter."
+        }
+      }
+    }
   }
 }

@@ -36,6 +36,7 @@ home-assistant-simple-smart-cover/
 │   └── translations/
 │       ├── de.json          # German UI translations
 │       └── en.json          # English UI translations (HA fallback)
+│   ├── services.yaml          # Service descriptions (set_positions)
 ├── hacs.json                # HACS metadata
 ├── .gitignore
 ├── README.md                # English README (primary)
@@ -62,6 +63,9 @@ home-assistant-simple-smart-cover/
 - Presence-based pause extension is optional per group. Presence alone never starts a pause; it only holds (sticky) and extends (nachlauf) an existing manual pause. The reset button always takes precedence.
 - When `use_forecast_max_temp` is enabled, the integration switches to proactive mode: `sun_calc.py` calculates when the sun will be at the window today (using `astral`), and `cover.py` fetches the hourly weather forecast at that time. The decision engine uses the forecast temperature and condition at the sun-in-window time instead of the current sun position. Fallback to `temp_forecast_entity` (day's max) if the hourly forecast is unavailable.
 - Morning time is automatically shifted past the quiet window if it falls inside it (`trigger.py: _effective_morning_time`), so the morning evaluation is not swallowed by the quiet-time early return.
+- The entity service `simple_smart_cover.set_positions` (registered in `cover.py`) allows updating the configured target positions (`position_sunny_in_angle`, `position_sunny_outside_angle`, `position_cloudy`) at runtime. It merges the provided values into the config entry options via `async_update_entry`, which triggers the existing `_async_update_options` listener — so listeners are re-registered and the position is re-evaluated automatically.
+- The cover entity exposes the currently configured positions as `extra_state_attributes` (`position_sunny_in_angle`, `position_sunny_outside_angle`, `position_cloudy`, `position_evening`) so external consumers (e.g. the custom card) can read them without accessing the config entry directly.
+- A separate Lovelace custom card lives in its own repository (`home-assistant-simple-smart-cover-card`). It is a Lit + TypeScript project built with Rollup, distributed via HACS (type: dashboard). It shows the target position, decision reason, optional decision details, and three sliders for the daytime positions. The sliders call `set_positions` on release.
 
 ## Known Issues / TODOs
 1. **HACS download URL mismatch**

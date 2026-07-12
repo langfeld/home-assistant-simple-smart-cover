@@ -66,6 +66,9 @@ CONF_PRESENCE_PAUSE_EXTENSION = "presence_pause_extension"
 # Test mode
 CONF_TEST_MODE = "test_mode"
 
+# Services
+SERVICE_SET_POSITIONS = "set_positions"
+
 # ---------------------------------------------------------------------------
 # Default values
 # ---------------------------------------------------------------------------

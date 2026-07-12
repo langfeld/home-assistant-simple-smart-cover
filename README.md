@@ -131,6 +131,14 @@ The integration ships with English and German translations. Home Assistant selec
 
 A German version of this README is available at [README.de.md](README.de.md).
 
+## Lovelace Custom Card
+
+A dedicated Lovelace card for this integration is available in a separate repository: [home-assistant-simple-smart-cover-card](https://github.com/langfeld/home-assistant-simple-smart-cover-card).
+
+It displays the target position, the current decision reason, optional decision details, and provides three sliders to directly adjust the configured positions (sun in angle, sun outside, cloudy). The sliders call the `simple_smart_cover.set_positions` service on release.
+
+Install via HACS (type: Dashboard) or manually — see the card repository for details.
+
 ## Note
 
 This is a first version. Feedback and suggestions for improvement are welcome.

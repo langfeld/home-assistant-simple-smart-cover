@@ -1,0 +1,39 @@
+set_positions:
+  target:
+    entity:
+      integration: simple_smart_cover
+      domain: cover
+  fields:
+    position_sunny_in_angle:
+      name: Position sun in angle
+      description: Target position when the sun shines into the window and it is warm.
+      example: 60
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+    position_sunny_outside_angle:
+      name: Position sun outside
+      description: Target position when the sun is not directly in the window or it is too cold.
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+    position_cloudy:
+      name: Position cloudy
+      description: Target position for cloudy weather.
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider

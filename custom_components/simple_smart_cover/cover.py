@@ -13,10 +13,16 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
+import voluptuous as vol
+
 from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    async_get_current_platform,
+)
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
@@ -28,6 +34,10 @@ from .const import (
     CONF_MANUAL_ACTIVITY_DURATION,
     CONF_MIN_POSITION_CHANGE,
     CONF_MIN_SUN_ELEVATION,
+    CONF_POSITION_CLOUDY,
+    CONF_POSITION_EVENING,
+    CONF_POSITION_SUNNY_IN_ANGLE,
+    CONF_POSITION_SUNNY_OUTSIDE_ANGLE,
     CONF_PRESENCE_PAUSE_EXTENSION,
     CONF_PRESENCE_SENSOR,
     CONF_QUIET_END,
@@ -40,15 +50,34 @@ from .const import (
     DEFAULT_MANUAL_ACTIVITY_DURATION,
     DEFAULT_MIN_POSITION_CHANGE,
     DEFAULT_MIN_SUN_ELEVATION,
+    DEFAULT_POSITION_CLOUDY,
+    DEFAULT_POSITION_EVENING,
+    DEFAULT_POSITION_SUNNY_IN_ANGLE,
+    DEFAULT_POSITION_SUNNY_OUTSIDE_ANGLE,
     DEFAULT_PRESENCE_PAUSE_EXTENSION,
     DEFAULT_SUN_ANGLE_TOLERANCE,
     DEFAULT_WINDOW_ORIENTATION,
     DOMAIN,
+    SERVICE_SET_POSITIONS,
 )
 from .decision import DecisionContext, DecisionEngine, ForecastData
 from .entities import SimpleSmartCoverDeviceMixin
 
 _LOGGER = logging.getLogger(__name__)
+
+# Voluptuous schema for the set_positions entity service. Each field is
+# optional; only the provided values are written to the config entry options.
+_SET_POSITIONS_SCHEMA = {
+    vol.Optional(CONF_POSITION_SUNNY_IN_ANGLE): vol.All(
+        vol.Coerce(int), vol.Range(min=0, max=100)
+    ),
+    vol.Optional(CONF_POSITION_SUNNY_OUTSIDE_ANGLE): vol.All(
+        vol.Coerce(int), vol.Range(min=0, max=100)
+    ),
+    vol.Optional(CONF_POSITION_CLOUDY): vol.All(
+        vol.Coerce(int), vol.Range(min=0, max=100)
+    ),
+}
 
 # Grace period after our own service call during which cover state changes are
 # treated as our own movement rather than a manual intervention.
@@ -78,6 +107,13 @@ async def async_setup_entry(
 ) -> None:
     """Create the virtual cover entity for the config entry."""
     async_add_entities([SimpleSmartCoverEntity(hass, config_entry)])
+
+    platform = async_get_current_platform(hass)
+    platform.async_register_entity_service(
+        SERVICE_SET_POSITIONS,
+        _SET_POSITIONS_SCHEMA,
+        "async_set_positions",
+    )
 
 
 class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEntity):
@@ -574,13 +610,27 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
         """Return entity-specific state attributes.
 
         Includes the manual pause timer and evening flag so they survive a
-        HA restart via RestoreEntity.
+        HA restart via RestoreEntity. The configured target positions are
+        exposed so the custom card (and other consumers) can read and display
+        them without accessing the config entry directly.
         """
         return {
             "decision_reason": self._decision_reason,
             "decision_details": self._decision_details,
             "should_move": self._should_move,
             "target_position": self._target_position,
+            "position_sunny_in_angle": self._data.get(
+                CONF_POSITION_SUNNY_IN_ANGLE, DEFAULT_POSITION_SUNNY_IN_ANGLE
+            ),
+            "position_sunny_outside_angle": self._data.get(
+                CONF_POSITION_SUNNY_OUTSIDE_ANGLE, DEFAULT_POSITION_SUNNY_OUTSIDE_ANGLE
+            ),
+            "position_cloudy": self._data.get(
+                CONF_POSITION_CLOUDY, DEFAULT_POSITION_CLOUDY
+            ),
+            "position_evening": self._data.get(
+                CONF_POSITION_EVENING, DEFAULT_POSITION_EVENING
+            ),
             "manual_pause_until": (
                 self._manual_pause_until.isoformat()
                 if self._manual_pause_until
@@ -612,6 +662,29 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
         position = kwargs.get("position", 100)
         self._target_position = int(position)
         self.async_write_ha_state()
+
+    async def async_set_positions(self, **kwargs: Any) -> None:
+        """Update configured target positions from a service call.
+
+        Merges the provided values into the config entry options. The existing
+        update listener re-registers listeners and re-evaluates the position
+        automatically, so no explicit recalculation is needed here.
+        """
+        new_options = dict(self._config_entry.options)
+        updated = False
+        for key in (
+            CONF_POSITION_SUNNY_IN_ANGLE,
+            CONF_POSITION_SUNNY_OUTSIDE_ANGLE,
+            CONF_POSITION_CLOUDY,
+        ):
+            value = kwargs.get(key)
+            if value is not None:
+                new_options[key] = int(value)
+                updated = True
+        if updated:
+            self.hass.config_entries.async_update_entry(
+                self._config_entry, options=new_options
+            )
 
     # -- core evaluation ---------------------------------------------------
 

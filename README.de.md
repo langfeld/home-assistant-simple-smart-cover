@@ -131,6 +131,14 @@ Das Attribut `decision_details` zeigt `forecast_mode: true` und `sun_in_window_t
 
 Die Integration liefert englische und deutsche Übersetzungen mit. Home Assistant wählt die Sprache automatisch anhand der HA-Oberflächensprache. Entity-Namen sind auf Englisch, damit sie über alle Spracheinstellungen hinweg stabil bleiben.
 
+## Lovelace Custom Card
+
+Eine eigene Lovelace-Card für diese Integration ist in einem separaten Repository verfügbar: [home-assistant-simple-smart-cover-card](https://github.com/langfeld/home-assistant-simple-smart-cover-card).
+
+Sie zeigt die Zielposition, den aktuellen Entscheidungsgrund, optional die Decision-Details und bietet drei Slider, mit denen sich die konfigurierten Positionen (Sonne im Fenster, Sonne außerhalb, bewölkt) direkt einstellen lassen. Die Slider rufen beim Loslassen den Service `simple_smart_cover.set_positions` auf.
+
+Installation via HACS (Typ: Dashboard) oder manuell — siehe Card-Repository für Details.
+
 ## Hinweis
 
 Dies ist eine erste Version. Feedback und Verbesserungsvorschläge sind willkommen.

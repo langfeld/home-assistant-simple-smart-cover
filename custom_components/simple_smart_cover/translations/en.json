@@ -268,5 +268,25 @@
         "submit": "Save"
       }
     }
+  },
+  "services": {
+    "set_positions": {
+      "name": "Set positions",
+      "description": "Updates the configured target positions of a cover group and re-evaluates immediately.",
+      "fields": {
+        "position_sunny_in_angle": {
+          "name": "Position sun in angle",
+          "description": "Target position when the sun shines into the window and it is warm."
+        },
+        "position_sunny_outside_angle": {
+          "name": "Position sun outside",
+          "description": "Target position when the sun is not directly in the window or it is too cold."
+        },
+        "position_cloudy": {
+          "name": "Position cloudy",
+          "description": "Target position for cloudy weather."
+        }
+      }
+    }
   }
 }
