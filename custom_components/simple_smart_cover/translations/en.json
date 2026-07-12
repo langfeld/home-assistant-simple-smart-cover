@@ -285,6 +285,40 @@
         "position_cloudy": {
           "name": "Position cloudy",
           "description": "Target position for cloudy weather."
+        },
+        "position_evening": {
+          "name": "Position evening",
+          "description": "Target position in the evening."
+        }
+      }
+    },
+    "set_schedule": {
+      "name": "Set schedule",
+      "description": "Updates the schedule settings (morning time, evening, quiet mode) of a cover group.",
+      "fields": {
+        "morning_time": {
+          "name": "Morning open time",
+          "description": "Time when covers open in the morning (HH:MM:SS)."
+        },
+        "enable_morning": {
+          "name": "Enable morning",
+          "description": "Enable the morning trigger."
+        },
+        "enable_evening": {
+          "name": "Enable evening",
+          "description": "Enable the evening trigger."
+        },
+        "enable_quiet_mode": {
+          "name": "Enable quiet mode",
+          "description": "During quiet time no movements are executed."
+        },
+        "quiet_start": {
+          "name": "Quiet mode start",
+          "description": "Start of the quiet period (HH:MM:SS)."
+        },
+        "quiet_end": {
+          "name": "Quiet mode end",
+          "description": "End of the quiet period (HH:MM:SS)."
         }
       }
     }

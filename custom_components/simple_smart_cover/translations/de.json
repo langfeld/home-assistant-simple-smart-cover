@@ -285,6 +285,40 @@
         "position_cloudy": {
           "name": "Position bei bewölkt",
           "description": "Zielposition bei bewölktem Wetter."
+        },
+        "position_evening": {
+          "name": "Position am Abend",
+          "description": "Zielposition am Abend."
+        }
+      }
+    },
+    "set_schedule": {
+      "name": "Zeitplan festlegen",
+      "description": "Aktualisiert die Zeitplan-Einstellungen (Morgenzeit, Abend, Ruhemodus) einer Rollladengruppe.",
+      "fields": {
+        "morning_time": {
+          "name": "Morgendliche Hochfahrzeit",
+          "description": "Uhrzeit, zu der die Rollläden morgens hochfahren (HH:MM:SS)."
+        },
+        "enable_morning": {
+          "name": "Morgens aktivieren",
+          "description": "Aktiviert den morgendlichen Trigger."
+        },
+        "enable_evening": {
+          "name": "Abends aktivieren",
+          "description": "Aktiviert den abendlichen Trigger."
+        },
+        "enable_quiet_mode": {
+          "name": "Ruhemodus aktivieren",
+          "description": "In der Ruhezeit werden keine Bewegungen ausgeführt."
+        },
+        "quiet_start": {
+          "name": "Ruhemodus Beginn",
+          "description": "Beginn der Ruhezeit (HH:MM:SS)."
+        },
+        "quiet_end": {
+          "name": "Ruhemodus Ende",
+          "description": "Ende der Ruhezeit (HH:MM:SS)."
         }
       }
     }

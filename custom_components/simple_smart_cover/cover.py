@@ -29,11 +29,14 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_COVERS,
+    CONF_ENABLE_EVENING,
     CONF_ENABLE_MANUAL_ACTIVITY_PAUSE,
+    CONF_ENABLE_MORNING,
     CONF_ENABLE_QUIET_MODE,
     CONF_MANUAL_ACTIVITY_DURATION,
     CONF_MIN_POSITION_CHANGE,
     CONF_MIN_SUN_ELEVATION,
+    CONF_MORNING_TIME,
     CONF_POSITION_CLOUDY,
     CONF_POSITION_EVENING,
     CONF_POSITION_SUNNY_IN_ANGLE,
@@ -50,6 +53,7 @@ from .const import (
     DEFAULT_MANUAL_ACTIVITY_DURATION,
     DEFAULT_MIN_POSITION_CHANGE,
     DEFAULT_MIN_SUN_ELEVATION,
+    DEFAULT_MORNING_TIME,
     DEFAULT_POSITION_CLOUDY,
     DEFAULT_POSITION_EVENING,
     DEFAULT_POSITION_SUNNY_IN_ANGLE,
@@ -59,6 +63,8 @@ from .const import (
     DEFAULT_WINDOW_ORIENTATION,
     DOMAIN,
     SERVICE_SET_POSITIONS,
+    SERVICE_SET_SCHEDULE,
+    is_valid_time,
 )
 from .decision import DecisionContext, DecisionEngine, ForecastData
 from .entities import SimpleSmartCoverDeviceMixin
@@ -76,6 +82,27 @@ _SET_POSITIONS_SCHEMA = {
     ),
     vol.Optional(CONF_POSITION_CLOUDY): vol.All(
         vol.Coerce(int), vol.Range(min=0, max=100)
+    ),
+    vol.Optional(CONF_POSITION_EVENING): vol.All(
+        vol.Coerce(int), vol.Range(min=0, max=100)
+    ),
+}
+
+# Voluptuous schema for the set_schedule entity service. Each field is
+# optional; only the provided values are written to the config entry options.
+# Time fields are validated as HH:MM:SS strings.
+_SET_SCHEDULE_SCHEMA = {
+    vol.Optional(CONF_MORNING_TIME): vol.All(
+        str, vol.Validate(lambda v: v if is_valid_time(v) else vol.INVALID)
+    ),
+    vol.Optional(CONF_ENABLE_MORNING): bool,
+    vol.Optional(CONF_ENABLE_EVENING): bool,
+    vol.Optional(CONF_ENABLE_QUIET_MODE): bool,
+    vol.Optional(CONF_QUIET_START): vol.All(
+        str, vol.Validate(lambda v: v if is_valid_time(v) else vol.INVALID)
+    ),
+    vol.Optional(CONF_QUIET_END): vol.All(
+        str, vol.Validate(lambda v: v if is_valid_time(v) else vol.INVALID)
     ),
 }
 
@@ -113,6 +140,11 @@ async def async_setup_entry(
         SERVICE_SET_POSITIONS,
         _SET_POSITIONS_SCHEMA,
         "async_set_positions",
+    )
+    platform.async_register_entity_service(
+        SERVICE_SET_SCHEDULE,
+        _SET_SCHEDULE_SCHEMA,
+        "async_set_schedule",
     )
 
 
@@ -610,9 +642,10 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
         """Return entity-specific state attributes.
 
         Includes the manual pause timer and evening flag so they survive a
-        HA restart via RestoreEntity. The configured target positions are
-        exposed so the custom card (and other consumers) can read and display
-        them without accessing the config entry directly.
+        HA restart via RestoreEntity. The configured target positions,
+        schedule settings and status flags are exposed so the custom card
+        (and other consumers) can read and display them without accessing
+        the config entry directly.
         """
         return {
             "decision_reason": self._decision_reason,
@@ -631,6 +664,18 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
             "position_evening": self._data.get(
                 CONF_POSITION_EVENING, DEFAULT_POSITION_EVENING
             ),
+            "morning_time": self._data.get(
+                CONF_MORNING_TIME, DEFAULT_MORNING_TIME
+            ),
+            "enable_morning": self._data.get(CONF_ENABLE_MORNING, True),
+            "enable_evening": self._data.get(CONF_ENABLE_EVENING, True),
+            "enable_quiet_mode": self._data.get(CONF_ENABLE_QUIET_MODE, False),
+            "quiet_start": self._data.get(CONF_QUIET_START, "22:00:00"),
+            "quiet_end": self._data.get(CONF_QUIET_END, "07:00:00"),
+            "test_mode": self._data.get(CONF_TEST_MODE, False),
+            "forecast_mode": self._data.get(CONF_USE_FORECAST_MAX_TEMP, False),
+            "manual_pause_active": self.is_manual_pause_active(),
+            "pause_remaining": self.get_pause_remaining_minutes(),
             "manual_pause_until": (
                 self._manual_pause_until.isoformat()
                 if self._manual_pause_until
@@ -676,10 +721,35 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
             CONF_POSITION_SUNNY_IN_ANGLE,
             CONF_POSITION_SUNNY_OUTSIDE_ANGLE,
             CONF_POSITION_CLOUDY,
+            CONF_POSITION_EVENING,
         ):
             value = kwargs.get(key)
             if value is not None:
                 new_options[key] = int(value)
+                updated = True
+        if updated:
+            self.hass.config_entries.async_update_entry(
+                self._config_entry, options=new_options
+            )
+
+    async def async_set_schedule(self, **kwargs: Any) -> None:
+        """Update schedule settings from a service call.
+
+        Merges the provided values into the config entry options. The existing
+        update listener re-registers triggers and re-evaluates automatically.
+        """
+        new_options = dict(self._config_entry.options)
+        updated = False
+        for key in (
+            CONF_MORNING_TIME,
+            CONF_ENABLE_MORNING,
+            CONF_ENABLE_EVENING,
+            CONF_ENABLE_QUIET_MODE,
+            CONF_QUIET_START,
+            CONF_QUIET_END,
+        ):
+            if key in kwargs:
+                new_options[key] = kwargs[key]
                 updated = True
         if updated:
             self.hass.config_entries.async_update_entry(

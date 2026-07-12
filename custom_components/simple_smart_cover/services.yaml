@@ -37,3 +37,57 @@ set_positions:
           step: 1
           unit_of_measurement: "%"
           mode: slider
+    position_evening:
+      name: Position evening
+      description: Target position in the evening.
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+set_schedule:
+  target:
+    entity:
+      integration: simple_smart_cover
+      domain: cover
+  fields:
+    morning_time:
+      name: Morning open time
+      description: Time when covers open in the morning (HH:MM:SS).
+      example: "07:00:00"
+      selector:
+        text: {}
+    enable_morning:
+      name: Enable morning
+      description: Enable the morning trigger.
+      example: true
+      selector:
+        boolean: {}
+    enable_evening:
+      name: Enable evening
+      description: Enable the evening trigger.
+      example: true
+      selector:
+        boolean: {}
+    enable_quiet_mode:
+      name: Enable quiet mode
+      description: During quiet time no movements are executed.
+      example: false
+      selector:
+        boolean: {}
+    quiet_start:
+      name: Quiet mode start
+      description: Start of the quiet period (HH:MM:SS).
+      example: "22:00:00"
+      selector:
+        text: {}
+    quiet_end:
+      name: Quiet mode end
+      description: End of the quiet period (HH:MM:SS).
+      example: "07:00:00"
+      selector:
+        text: {}
