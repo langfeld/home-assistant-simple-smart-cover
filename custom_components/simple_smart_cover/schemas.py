@@ -209,10 +209,22 @@ def build_schema_schedule(defaults: dict[str, Any] | None = None) -> vol.Schema:
 
 
 def build_schema_sun_temp(defaults: dict[str, Any] | None = None) -> vol.Schema:
-    """Step 3: window orientation, sun angles, temperature and forecast."""
+    """Step 3: window orientation, sun angles, temperature and forecast.
+
+    The forecast-mode toggle and its fallback sensor are placed first so the
+    powerful proactive mode is prominently visible at the top of the form.
+    """
     defaults = defaults or {}
     return vol.Schema(
         {
+            vol.Optional(
+                CONF_USE_FORECAST_MAX_TEMP,
+                default=defaults.get(CONF_USE_FORECAST_MAX_TEMP, False),
+            ): bool,
+            vol.Optional(
+                CONF_TEMP_FORECAST_ENTITY,
+                **_optional_default(defaults, CONF_TEMP_FORECAST_ENTITY),
+            ): _temp_sensor_selector(),
             vol.Optional(
                 CONF_WINDOW_ORIENTATION,
                 default=defaults.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION),
@@ -235,14 +247,6 @@ def build_schema_sun_temp(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ): _slider(-20, 45, 0.5, "°C"),
             vol.Optional(
                 CONF_TEMP_SOURCE, **_optional_default(defaults, CONF_TEMP_SOURCE)
-            ): _temp_sensor_selector(),
-            vol.Optional(
-                CONF_USE_FORECAST_MAX_TEMP,
-                default=defaults.get(CONF_USE_FORECAST_MAX_TEMP, False),
-            ): bool,
-            vol.Optional(
-                CONF_TEMP_FORECAST_ENTITY,
-                **_optional_default(defaults, CONF_TEMP_FORECAST_ENTITY),
             ): _temp_sensor_selector(),
             vol.Optional(
                 CONF_CLOUDY_CONDITIONS,

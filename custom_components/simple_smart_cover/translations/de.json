@@ -82,8 +82,8 @@
           "min_sun_elevation": "Minimale Sonnenhöhe",
           "temp_threshold": "Temperatur-Schwelle",
           "temp_source": "Temperatur-Sensor (optional)",
-          "use_forecast_max_temp": "Tageshöchsttemperatur verwenden",
-          "temp_forecast_entity": "Tageshöchsttemperatur-Sensor (optional)",
+          "use_forecast_max_temp": "Vorausschauender Prognose-Modus",
+          "temp_forecast_entity": "Fallback: Tageshöchsttemperatur-Sensor",
           "cloudy_conditions": "Bewölkte Wetterbedingungen",
           "save_and_exit": "Speichern und beenden"
         },
@@ -93,8 +93,8 @@
           "min_sun_elevation": "Minimale Sonnenhöhe über dem Horizont. Darunter wird nicht beschattet (z. B. Winter).",
           "temp_threshold": "Ab dieser Temperatur gilt es als warm und die Sonnenschutz-Position wird verwendet.",
           "temp_source": "Optionaler Temperatur-Sensor. Falls nicht angegeben, wird die Temperatur der Wetter-Entity genutzt.",
-          "use_forecast_max_temp": "Aktivieren, um vorausschauend zu entscheiden: die Integration berechnet, wann die Sonne heute ins Fenster fällt, und nutzt die vorhergesagte Temperatur und Wetterbedingung zu diesem Zeitpunkt. Fallback auf Tageshöchsttemperatur, falls der Forecast nicht ermittelbar ist.",
-          "temp_forecast_entity": "Optionaler Sensor für die heutige Höchsttemperatur (Fallback, falls der stündliche Forecast nicht ermittelbar ist).",
+          "use_forecast_max_temp": "EINGESCHALTET: Die Integration berechnet, wann die Sonne heute ins Fenster fällt, und nutzt die vorhergesagte Temperatur und Wetterbedingung zu diesem Zeitpunkt — statt der aktuellen Sonnenposition. Das ermöglicht eine Entscheidung morgens für den ganzen Tag, auch ohne regelmäßige Neubewertung. Fallback auf Tageshöchsttemperatur, falls der stündliche Forecast nicht ermittelbar ist.",
+          "temp_forecast_entity": "Optionaler Sensor für die heutige Höchsttemperatur. Wird nur genutzt, falls der stündliche Forecast zum berechneten Sonnenstand-Zeitpunkt nicht ermittelbar ist.",
           "cloudy_conditions": "Wetterbedingungen, bei denen die Rollläden hochfahren sollen.",
           "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
         },
@@ -203,8 +203,8 @@
           "min_sun_elevation": "Minimale Sonnenhöhe",
           "temp_threshold": "Temperatur-Schwelle",
           "temp_source": "Temperatur-Sensor (optional)",
-          "use_forecast_max_temp": "Tageshöchsttemperatur verwenden",
-          "temp_forecast_entity": "Tageshöchsttemperatur-Sensor (optional)",
+          "use_forecast_max_temp": "Vorausschauender Prognose-Modus",
+          "temp_forecast_entity": "Fallback: Tageshöchsttemperatur-Sensor",
           "cloudy_conditions": "Bewölkte Wetterbedingungen",
           "save_and_exit": "Speichern und beenden"
         },
@@ -214,8 +214,8 @@
           "min_sun_elevation": "Minimale Sonnenhöhe über dem Horizont. Darunter wird nicht beschattet (z. B. Winter).",
           "temp_threshold": "Ab dieser Temperatur gilt es als warm und die Sonnenschutz-Position wird verwendet.",
           "temp_source": "Optionaler Temperatur-Sensor. Falls nicht angegeben, wird die Temperatur der Wetter-Entity genutzt.",
-          "use_forecast_max_temp": "Aktivieren, um vorausschauend zu entscheiden: die Integration berechnet, wann die Sonne heute ins Fenster fällt, und nutzt die vorhergesagte Temperatur und Wetterbedingung zu diesem Zeitpunkt. Fallback auf Tageshöchsttemperatur, falls der Forecast nicht ermittelbar ist.",
-          "temp_forecast_entity": "Optionaler Sensor für die heutige Höchsttemperatur (Fallback, falls der stündliche Forecast nicht ermittelbar ist).",
+          "use_forecast_max_temp": "EINGESCHALTET: Die Integration berechnet, wann die Sonne heute ins Fenster fällt, und nutzt die vorhergesagte Temperatur und Wetterbedingung zu diesem Zeitpunkt — statt der aktuellen Sonnenposition. Das ermöglicht eine Entscheidung morgens für den ganzen Tag, auch ohne regelmäßige Neubewertung. Fallback auf Tageshöchsttemperatur, falls der stündliche Forecast nicht ermittelbar ist.",
+          "temp_forecast_entity": "Optionaler Sensor für die heutige Höchsttemperatur. Wird nur genutzt, falls der stündliche Forecast zum berechneten Sonnenstand-Zeitpunkt nicht ermittelbar ist.",
           "cloudy_conditions": "Wetterbedingungen, bei denen die Rollläden hochfahren sollen.",
           "save_and_exit": "Aktivieren, um die Konfiguration an dieser Stelle zu speichern und den Dialog zu verlassen, ohne die weiteren Schritte zu durchlaufen."
         },

@@ -82,8 +82,8 @@
           "min_sun_elevation": "Minimum sun elevation",
           "temp_threshold": "Temperature threshold",
           "temp_source": "Temperature sensor (optional)",
-          "use_forecast_max_temp": "Use daily maximum temperature",
-          "temp_forecast_entity": "Daily max temperature sensor (optional)",
+          "use_forecast_max_temp": "Proactive forecast mode",
+          "temp_forecast_entity": "Fallback: daily max temperature sensor",
           "cloudy_conditions": "Cloudy weather conditions",
           "save_and_exit": "Save and exit"
         },
@@ -93,8 +93,8 @@
           "min_sun_elevation": "Minimum sun height above the horizon. Below this no shading is applied (e.g. winter).",
           "temp_threshold": "Above this temperature it is considered warm and the sun-protection position is used.",
           "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
-          "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
-          "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
+          "use_forecast_max_temp": "ENABLED: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time — instead of the current sun position. This allows a single morning decision for the whole day, even without periodic re-evaluation. Falls back to the daily max temperature if the hourly forecast is unavailable.",
+          "temp_forecast_entity": "Optional sensor for today's maximum temperature. Only used if the hourly forecast at the calculated sun-in-window time is unavailable.",
           "cloudy_conditions": "Weather conditions under which the covers should open.",
           "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
         },
@@ -203,8 +203,8 @@
           "min_sun_elevation": "Minimum sun elevation",
           "temp_threshold": "Temperature threshold",
           "temp_source": "Temperature sensor (optional)",
-          "use_forecast_max_temp": "Use daily maximum temperature",
-          "temp_forecast_entity": "Daily max temperature sensor (optional)",
+          "use_forecast_max_temp": "Proactive forecast mode",
+          "temp_forecast_entity": "Fallback: daily max temperature sensor",
           "cloudy_conditions": "Cloudy weather conditions",
           "save_and_exit": "Save and exit"
         },
@@ -214,8 +214,8 @@
           "min_sun_elevation": "Minimum sun height above the horizon. Below this no shading is applied (e.g. winter).",
           "temp_threshold": "Above this temperature it is considered warm and the sun-protection position is used.",
           "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
-          "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
-          "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
+          "use_forecast_max_temp": "ENABLED: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time — instead of the current sun position. This allows a single morning decision for the whole day, even without periodic re-evaluation. Falls back to the daily max temperature if the hourly forecast is unavailable.",
+          "temp_forecast_entity": "Optional sensor for today's maximum temperature. Only used if the hourly forecast at the calculated sun-in-window time is unavailable.",
           "cloudy_conditions": "Weather conditions under which the covers should open.",
           "save_and_exit": "Check to save the configuration at this point and exit the dialog without going through the remaining steps."
         },
