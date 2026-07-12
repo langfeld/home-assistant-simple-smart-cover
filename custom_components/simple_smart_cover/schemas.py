@@ -71,6 +71,11 @@ OPTIONAL_ENTITY_KEYS = [
     CONF_PRESENCE_SENSOR,
 ]
 
+# Optional entity keys grouped by step so each step can clear only its own
+# keys when the user removes a previously selected entity.
+STEP_SUN_TEMP_OPTIONAL_KEYS = [CONF_TEMP_SOURCE, CONF_TEMP_FORECAST_ENTITY]
+STEP_BEHAVIOR_OPTIONAL_KEYS = [CONF_PRESENCE_SENSOR]
+
 
 # ---------------------------------------------------------------------------
 # Selector factories
@@ -144,14 +149,13 @@ def _optional_default(defaults: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Schema builders
+# Schema builders — one per config-flow step
 # ---------------------------------------------------------------------------
 
 
-def build_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
-    """Return the full config/options schema pre-filled from defaults."""
+def build_schema_basics(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Step 1: group name, covers and weather entity."""
     defaults = defaults or {}
-
     return vol.Schema(
         {
             vol.Required(
@@ -163,6 +167,15 @@ def build_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Required(
                 CONF_WEATHER_ENTITY, default=defaults.get(CONF_WEATHER_ENTITY)
             ): _weather_selector(),
+        }
+    )
+
+
+def build_schema_schedule(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Step 2: morning/evening triggers and quiet window."""
+    defaults = defaults or {}
+    return vol.Schema(
+        {
             vol.Optional(
                 CONF_MORNING_TIME,
                 default=defaults.get(CONF_MORNING_TIME, DEFAULT_MORNING_TIME),
@@ -173,6 +186,27 @@ def build_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(
                 CONF_ENABLE_EVENING, default=defaults.get(CONF_ENABLE_EVENING, True)
             ): bool,
+            vol.Optional(
+                CONF_ENABLE_QUIET_MODE,
+                default=defaults.get(CONF_ENABLE_QUIET_MODE, False),
+            ): bool,
+            vol.Optional(
+                CONF_QUIET_START,
+                default=defaults.get(CONF_QUIET_START, "22:00:00"),
+            ): str,
+            vol.Optional(
+                CONF_QUIET_END,
+                default=defaults.get(CONF_QUIET_END, "07:00:00"),
+            ): str,
+        }
+    )
+
+
+def build_schema_sun_temp(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Step 3: window orientation, sun angles, temperature and forecast."""
+    defaults = defaults or {}
+    return vol.Schema(
+        {
             vol.Optional(
                 CONF_WINDOW_ORIENTATION,
                 default=defaults.get(CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION),
@@ -214,6 +248,15 @@ def build_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     mode=selector.SelectSelectorMode.LIST,
                 )
             ),
+        }
+    )
+
+
+def build_schema_positions(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Step 4: target positions for each situation."""
+    defaults = defaults or {}
+    return vol.Schema(
+        {
             vol.Optional(
                 CONF_POSITION_SUNNY_IN_ANGLE,
                 default=defaults.get(
@@ -239,18 +282,15 @@ def build_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_INVERT_POSITIONS,
                 default=defaults.get(CONF_INVERT_POSITIONS, False),
             ): bool,
-            vol.Optional(
-                CONF_ENABLE_QUIET_MODE,
-                default=defaults.get(CONF_ENABLE_QUIET_MODE, False),
-            ): bool,
-            vol.Optional(
-                CONF_QUIET_START,
-                default=defaults.get(CONF_QUIET_START, "22:00:00"),
-            ): str,
-            vol.Optional(
-                CONF_QUIET_END,
-                default=defaults.get(CONF_QUIET_END, "07:00:00"),
-            ): str,
+        }
+    )
+
+
+def build_schema_behavior(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Step 5: re-evaluation, manual pause, presence extension, test mode."""
+    defaults = defaults or {}
+    return vol.Schema(
+        {
             vol.Optional(
                 CONF_ENABLE_REEVALUATION,
                 default=defaults.get(CONF_ENABLE_REEVALUATION, True),
@@ -323,13 +363,20 @@ def build_duplicate_schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
-def null_cleared_optional_keys(user_input: dict[str, Any]) -> None:
+def null_cleared_optional_keys(
+    user_input: dict[str, Any], keys: list[str] | None = None
+) -> None:
     """Set optional entity keys to None when voluptuous omitted them.
 
     When a user clears an optional entity selector, voluptuous does not include
     the key in user_input. We explicitly store None so the saved config reflects
     the cleared state instead of keeping a stale previous value.
+
+    When *keys* is None (used by the duplicate flow) all OPTIONAL_ENTITY_KEYS
+    are checked. Pass a subset to clear only the keys that belong to a single
+    config-flow step.
     """
-    for key in OPTIONAL_ENTITY_KEYS:
+    check_keys = keys if keys is not None else OPTIONAL_ENTITY_KEYS
+    for key in check_keys:
         if key not in user_input:
             user_input[key] = None

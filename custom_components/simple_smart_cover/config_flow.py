@@ -28,8 +28,14 @@ from .const import (
     is_valid_time,
 )
 from .schemas import (
+    STEP_BEHAVIOR_OPTIONAL_KEYS,
+    STEP_SUN_TEMP_OPTIONAL_KEYS,
     build_duplicate_schema,
-    build_schema,
+    build_schema_basics,
+    build_schema_behavior,
+    build_schema_positions,
+    build_schema_schedule,
+    build_schema_sun_temp,
     null_cleared_optional_keys,
 )
 
@@ -118,6 +124,7 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         super().__init__()
         self._duplicate_source_entry: config_entries.ConfigEntry | None = None
+        self._create_data: dict[str, Any] = {}
 
     @staticmethod
     @callback
@@ -140,29 +147,88 @@ class SimpleSmartCoverConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             menu_options=menu_options,
         )
 
+    # -- create flow: 5 chained steps --------------------------------------
+
     async def async_step_create_new(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle creating a new group."""
+        """Step 1/5: group name, covers and weather entity."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            errors = _validate_time_fields(user_input)
-
             if user_input[CONF_NAME] in _get_existing_names(self.hass):
                 errors[CONF_NAME] = "name_exists"
 
             if not errors:
-                null_cleared_optional_keys(user_input)
-                return self.async_create_entry(
-                    title=user_input[CONF_NAME],
-                    data=user_input,
-                )
+                self._create_data.update(user_input)
+                return await self.async_step_create_schedule()
 
         return self.async_show_form(
             step_id="create_new",
-            data_schema=build_schema(),
+            data_schema=build_schema_basics(),
             errors=errors,
+        )
+
+    async def async_step_create_schedule(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 2/5: morning/evening triggers and quiet window."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            errors = _validate_time_fields(user_input)
+            if not errors:
+                self._create_data.update(user_input)
+                return await self.async_step_create_sun_temp()
+
+        return self.async_show_form(
+            step_id="create_schedule",
+            data_schema=build_schema_schedule(self._create_data),
+            errors=errors,
+        )
+
+    async def async_step_create_sun_temp(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 3/5: window orientation, sun angles, temperature and forecast."""
+        if user_input is not None:
+            null_cleared_optional_keys(user_input, STEP_SUN_TEMP_OPTIONAL_KEYS)
+            self._create_data.update(user_input)
+            return await self.async_step_create_positions()
+
+        return self.async_show_form(
+            step_id="create_sun_temp",
+            data_schema=build_schema_sun_temp(self._create_data),
+        )
+
+    async def async_step_create_positions(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 4/5: target positions for each situation."""
+        if user_input is not None:
+            self._create_data.update(user_input)
+            return await self.async_step_create_behavior()
+
+        return self.async_show_form(
+            step_id="create_positions",
+            data_schema=build_schema_positions(self._create_data),
+        )
+
+    async def async_step_create_behavior(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 5/5: re-evaluation, manual pause, presence extension, test mode."""
+        if user_input is not None:
+            null_cleared_optional_keys(user_input, STEP_BEHAVIOR_OPTIONAL_KEYS)
+            self._create_data.update(user_input)
+            return self.async_create_entry(
+                title=self._create_data[CONF_NAME],
+                data=self._create_data,
+            )
+
+        return self.async_show_form(
+            step_id="create_behavior",
+            data_schema=build_schema_behavior(self._create_data),
         )
 
     async def async_step_duplicate_existing(
@@ -276,17 +342,20 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize the options flow."""
         super().__init__()
         self._config_entry = config_entry
+        self._options_data: dict[str, Any] = {
+            **config_entry.data,
+            **config_entry.options,
+        }
+
+    # -- options flow: 5 chained steps ------------------------------------
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the integration options."""
+        """Step 1/5: group name, covers and weather entity."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            errors = _validate_time_fields(user_input)
-
-            # Validate unique name (excluding this entry).
             name = user_input.get(CONF_NAME)
             if name and name in _get_existing_names(
                 self.hass, exclude_entry_id=self._config_entry.entry_id
@@ -294,25 +363,83 @@ class SimpleSmartCoverOptionsFlowHandler(config_entries.OptionsFlow):
                 errors[CONF_NAME] = "name_exists"
 
             if not errors:
-                # A name change updates the entry title and data[CONF_NAME].
-                if name is not None and name != self._config_entry.title:
-                    self.hass.config_entries.async_update_entry(
-                        self._config_entry,
-                        title=name,
-                        data={**self._config_entry.data, CONF_NAME: name},
-                    )
-
-                # CONF_NAME is handled above; keep it out of options data.
-                user_input.pop(CONF_NAME, None)
-
-                null_cleared_optional_keys(user_input)
-                return self.async_create_entry(title="", data=user_input)
-
-        # Merge saved data and options so existing values are pre-filled.
-        defaults = {**self._config_entry.data, **self._config_entry.options}
+                self._options_data.update(user_input)
+                return await self.async_step_schedule()
 
         return self.async_show_form(
             step_id="init",
-            data_schema=build_schema(defaults),
+            data_schema=build_schema_basics(self._options_data),
             errors=errors,
+        )
+
+    async def async_step_schedule(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 2/5: morning/evening triggers and quiet window."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            errors = _validate_time_fields(user_input)
+            if not errors:
+                self._options_data.update(user_input)
+                return await self.async_step_sun_temp()
+
+        return self.async_show_form(
+            step_id="schedule",
+            data_schema=build_schema_schedule(self._options_data),
+            errors=errors,
+        )
+
+    async def async_step_sun_temp(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 3/5: window orientation, sun angles, temperature and forecast."""
+        if user_input is not None:
+            null_cleared_optional_keys(user_input, STEP_SUN_TEMP_OPTIONAL_KEYS)
+            self._options_data.update(user_input)
+            return await self.async_step_positions()
+
+        return self.async_show_form(
+            step_id="sun_temp",
+            data_schema=build_schema_sun_temp(self._options_data),
+        )
+
+    async def async_step_positions(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 4/5: target positions for each situation."""
+        if user_input is not None:
+            self._options_data.update(user_input)
+            return await self.async_step_behavior()
+
+        return self.async_show_form(
+            step_id="positions",
+            data_schema=build_schema_positions(self._options_data),
+        )
+
+    async def async_step_behavior(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 5/5: re-evaluation, manual pause, presence extension, test mode."""
+        if user_input is not None:
+            null_cleared_optional_keys(user_input, STEP_BEHAVIOR_OPTIONAL_KEYS)
+            self._options_data.update(user_input)
+
+            # A name change updates the entry title and data[CONF_NAME].
+            name = self._options_data.get(CONF_NAME)
+            if name is not None and name != self._config_entry.title:
+                self.hass.config_entries.async_update_entry(
+                    self._config_entry,
+                    title=name,
+                    data={**self._config_entry.data, CONF_NAME: name},
+                )
+
+            # CONF_NAME is handled above; keep it out of options data.
+            self._options_data.pop(CONF_NAME, None)
+
+            return self.async_create_entry(title="", data=self._options_data)
+
+        return self.async_show_form(
+            step_id="behavior",
+            data_schema=build_schema_behavior(self._options_data),
         )

@@ -15,126 +15,6 @@
         "menu_options": {
           "create_new": "Create new group",
           "duplicate_existing": "Copy existing group"
-        },
-        "data_description": {
-          "name": "Name of the cover group. The entity ID is derived from this.",
-          "covers": "All covers that should be controlled together.",
-          "weather_entity": "Home Assistant weather entity for current conditions and temperature.",
-          "window_orientation": "Compass direction of the window in degrees: 0 = North, 90 = East, 180 = South, 270 = West.",
-          "sun_angle_tolerance": "Angular range left and right of the window direction where the sun counts as 'in the window'.",
-          "min_sun_elevation": "Minimum sun height above the horizon. Below this no shading is applied (e.g. winter).",
-          "temp_threshold": "Above this temperature it is considered warm and the sun-protection position is used.",
-          "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
-          "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
-          "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
-          "cloudy_conditions": "Weather conditions under which the covers should open.",
-          "position_sunny_in_angle": "Target position when the sun shines into the window and it is warm.",
-          "position_sunny_outside_angle": "Target position when the sun is not directly in the window or it is too cold.",
-          "position_cloudy": "Target position for cloudy weather.",
-          "position_evening": "Target position in the evening.",
-          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up.",
-          "enable_quiet_mode": "During quiet time no movements are executed.",
-          "enable_reevaluation": "Periodically recalculate the target position, not just morning/evening.",
-          "min_position_change": "Minimum difference from the current position before a movement is triggered.",
-          "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
-          "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
-          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
-          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
-          "test_mode": "Active: calculations run but the covers do not move."
-        },
-        "data": {
-          "name": "Group name",
-          "covers": "Covers",
-          "weather_entity": "Weather entity",
-          "morning_time": "Morning open time. If this falls inside the quiet window it is automatically shifted to the end of quiet time.",
-          "enable_morning": "Enable morning",
-          "enable_evening": "Enable evening",
-          "window_orientation": "Window orientation (azimuth)",
-          "sun_angle_tolerance": "Tolerance angle left/right",
-          "min_sun_elevation": "Minimum sun elevation",
-          "temp_threshold": "Temperature threshold",
-          "temp_source": "Temperature sensor (optional)",
-          "use_forecast_max_temp": "Use daily maximum temperature",
-          "temp_forecast_entity": "Daily max temperature sensor (optional)",
-          "cloudy_conditions": "Cloudy weather conditions",
-          "position_sunny_in_angle": "Position for sun in angle & warm",
-          "position_sunny_outside_angle": "Position for sun outside or too cold",
-          "position_cloudy": "Position for cloudy weather",
-          "position_evening": "Evening position",
-          "invert_positions": "Invert positions",
-          "enable_quiet_mode": "Enable quiet mode",
-          "quiet_start": "Quiet mode start",
-          "quiet_end": "Quiet mode end",
-          "enable_reevaluation": "Enable periodic re-evaluation",
-          "reevaluate_interval": "Re-evaluation interval",
-          "min_position_change": "Minimum position change",
-          "enable_manual_activity_pause": "Pause after manual operation",
-          "manual_activity_duration": "Manual pause duration",
-          "presence_sensor": "Presence sensor",
-          "presence_pause_extension": "Presence cooldown",
-          "test_mode": "Test mode (no movement)"
-        }
-      },
-      "create_new": {
-        "title": "Create new group",
-        "description": "Set up smart cover control based on weather and sun position.",
-        "data_description": {
-          "name": "Name of the cover group. The entity ID is derived from this.",
-          "covers": "All covers that should be controlled together.",
-          "weather_entity": "Home Assistant weather entity for current conditions and temperature.",
-          "window_orientation": "Compass direction of the window in degrees: 0 = North, 90 = East, 180 = South, 270 = West.",
-          "sun_angle_tolerance": "Angular range left and right of the window direction where the sun counts as 'in the window'.",
-          "min_sun_elevation": "Minimum sun height above the horizon. Below this no shading is applied (e.g. winter).",
-          "temp_threshold": "Above this temperature it is considered warm and the sun-protection position is used.",
-          "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
-          "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
-          "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
-          "cloudy_conditions": "Weather conditions under which the covers should open.",
-          "position_sunny_in_angle": "Target position when the sun shines into the window and it is warm.",
-          "position_sunny_outside_angle": "Target position when the sun is not directly in the window or it is too cold.",
-          "position_cloudy": "Target position for cloudy weather.",
-          "position_evening": "Target position in the evening.",
-          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up.",
-          "enable_quiet_mode": "During quiet time no movements are executed.",
-          "enable_reevaluation": "Periodically recalculate the target position, not just morning/evening.",
-          "min_position_change": "Minimum difference from the current position before a movement is triggered.",
-          "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
-          "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
-          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
-          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
-          "test_mode": "Active: calculations run but the covers do not move."
-        },
-        "data": {
-          "name": "Group name",
-          "covers": "Covers",
-          "weather_entity": "Weather entity",
-          "morning_time": "Morning open time. If this falls inside the quiet window it is automatically shifted to the end of quiet time.",
-          "enable_morning": "Enable morning",
-          "enable_evening": "Enable evening",
-          "window_orientation": "Window orientation (azimuth)",
-          "sun_angle_tolerance": "Tolerance angle left/right",
-          "min_sun_elevation": "Minimum sun elevation",
-          "temp_threshold": "Temperature threshold",
-          "temp_source": "Temperature sensor (optional)",
-          "use_forecast_max_temp": "Use daily maximum temperature",
-          "temp_forecast_entity": "Daily max temperature sensor (optional)",
-          "cloudy_conditions": "Cloudy weather conditions",
-          "position_sunny_in_angle": "Position for sun in angle & warm",
-          "position_sunny_outside_angle": "Position for sun outside or too cold",
-          "position_cloudy": "Position for cloudy weather",
-          "position_evening": "Evening position",
-          "invert_positions": "Invert positions",
-          "enable_quiet_mode": "Enable quiet mode",
-          "quiet_start": "Quiet mode start",
-          "quiet_end": "Quiet mode end",
-          "enable_reevaluation": "Enable periodic re-evaluation",
-          "reevaluate_interval": "Re-evaluation interval",
-          "min_position_change": "Minimum position change",
-          "enable_manual_activity_pause": "Pause after manual operation",
-          "manual_activity_duration": "Manual pause duration",
-          "presence_sensor": "Presence sensor",
-          "presence_pause_extension": "Presence cooldown",
-          "test_mode": "Test mode (no movement)"
         }
       },
       "duplicate_select": {
@@ -152,6 +32,106 @@
           "covers": "Covers",
           "window_orientation": "Window orientation (azimuth)"
         }
+      },
+      "create_new": {
+        "title": "Create new group — Basics",
+        "description": "Name the group and select the covers and weather entity to use for control.",
+        "data": {
+          "name": "Group name",
+          "covers": "Covers",
+          "weather_entity": "Weather entity"
+        },
+        "data_description": {
+          "name": "Name of the cover group. The entity ID is derived from this.",
+          "covers": "All covers that should be controlled together.",
+          "weather_entity": "Home Assistant weather entity for current conditions and temperature."
+        }
+      },
+      "create_schedule": {
+        "title": "Schedule",
+        "description": "Set when covers open in the morning, close in the evening, and the quiet period (no movement).",
+        "data": {
+          "morning_time": "Morning open time",
+          "enable_morning": "Enable morning",
+          "enable_evening": "Enable evening",
+          "enable_quiet_mode": "Enable quiet mode",
+          "quiet_start": "Quiet mode start",
+          "quiet_end": "Quiet mode end"
+        },
+        "data_description": {
+          "morning_time": "Morning open time. If this falls inside the quiet window it is automatically shifted to the end of quiet time.",
+          "enable_morning": "Enables the morning trigger that opens the covers at the configured time.",
+          "enable_evening": "Enables the sunset trigger that moves the covers to the evening position.",
+          "enable_quiet_mode": "During quiet time no movements are executed.",
+          "quiet_start": "Start of the quiet period (HH:MM:SS).",
+          "quiet_end": "End of the quiet period (HH:MM:SS)."
+        }
+      },
+      "create_sun_temp": {
+        "title": "Sun & Temperature",
+        "description": "Configure window orientation and temperature logic. These values determine when the sun counts as 'in the window' and above which temperature shading is applied.",
+        "data": {
+          "window_orientation": "Window orientation (azimuth)",
+          "sun_angle_tolerance": "Tolerance angle left/right",
+          "min_sun_elevation": "Minimum sun elevation",
+          "temp_threshold": "Temperature threshold",
+          "temp_source": "Temperature sensor (optional)",
+          "use_forecast_max_temp": "Use daily maximum temperature",
+          "temp_forecast_entity": "Daily max temperature sensor (optional)",
+          "cloudy_conditions": "Cloudy weather conditions"
+        },
+        "data_description": {
+          "window_orientation": "Compass direction of the window in degrees: 0 = North, 90 = East, 180 = South, 270 = West.",
+          "sun_angle_tolerance": "Angular range left and right of the window direction where the sun counts as 'in the window'.",
+          "min_sun_elevation": "Minimum sun height above the horizon. Below this no shading is applied (e.g. winter).",
+          "temp_threshold": "Above this temperature it is considered warm and the sun-protection position is used.",
+          "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
+          "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
+          "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
+          "cloudy_conditions": "Weather conditions under which the covers should open."
+        }
+      },
+      "create_positions": {
+        "title": "Positions",
+        "description": "Set the target positions for different situations (sun shading, cloudy, evening).",
+        "data": {
+          "position_sunny_in_angle": "Position for sun in angle & warm",
+          "position_sunny_outside_angle": "Position for sun outside or too cold",
+          "position_cloudy": "Position for cloudy weather",
+          "position_evening": "Evening position",
+          "invert_positions": "Invert positions"
+        },
+        "data_description": {
+          "position_sunny_in_angle": "Target position when the sun shines into the window and it is warm.",
+          "position_sunny_outside_angle": "Target position when the sun is not directly in the window or it is too cold.",
+          "position_cloudy": "Target position for cloudy weather.",
+          "position_evening": "Target position in the evening.",
+          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up."
+        }
+      },
+      "create_behavior": {
+        "title": "Behavior",
+        "description": "Configure the re-evaluation interval, manual operation pause, presence-based extension and test mode.",
+        "data": {
+          "enable_reevaluation": "Enable periodic re-evaluation",
+          "reevaluate_interval": "Re-evaluation interval",
+          "min_position_change": "Minimum position change",
+          "enable_manual_activity_pause": "Pause after manual operation",
+          "manual_activity_duration": "Manual pause duration",
+          "presence_sensor": "Presence sensor",
+          "presence_pause_extension": "Presence cooldown",
+          "test_mode": "Test mode (no movement)"
+        },
+        "data_description": {
+          "enable_reevaluation": "Periodically recalculate the target position, not just morning/evening.",
+          "reevaluate_interval": "Interval for the periodic re-evaluation.",
+          "min_position_change": "Minimum difference from the current position before a movement is triggered.",
+          "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
+          "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
+          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
+          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
+          "test_mode": "Active: calculations run but the covers do not move."
+        }
       }
     }
   },
@@ -162,41 +142,43 @@
     },
     "step": {
       "init": {
-        "title": "Edit Simple Smart Cover",
-        "description": "Adjust the settings of the smart cover control.",
-        "data_description": {
-          "name": "Name of the cover group. The entity ID is derived from this.",
-          "covers": "All covers that should be controlled together.",
-          "weather_entity": "Home Assistant weather entity for current conditions and temperature.",
-          "window_orientation": "Compass direction of the window in degrees: 0 = North, 90 = East, 180 = South, 270 = West.",
-          "sun_angle_tolerance": "Angular range left and right of the window direction where the sun counts as 'in the window'.",
-          "min_sun_elevation": "Minimum sun height above the horizon. Below this no shading is applied (e.g. winter).",
-          "temp_threshold": "Above this temperature it is considered warm and the sun-protection position is used.",
-          "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
-          "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
-          "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
-          "cloudy_conditions": "Weather conditions under which the covers should open.",
-          "position_sunny_in_angle": "Target position when the sun shines into the window and it is warm.",
-          "position_sunny_outside_angle": "Target position when the sun is not directly in the window or it is too cold.",
-          "position_cloudy": "Target position for cloudy weather.",
-          "position_evening": "Target position in the evening.",
-          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up.",
-          "enable_quiet_mode": "During quiet time no movements are executed.",
-          "enable_reevaluation": "Periodically recalculate the target position, not just morning/evening.",
-          "min_position_change": "Minimum difference from the current position before a movement is triggered.",
-          "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
-          "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
-          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
-          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
-          "test_mode": "Active: calculations run but the covers do not move."
-        },
+        "title": "Edit Simple Smart Cover — Basics",
+        "description": "Adjust the group name, covers and weather entity.",
         "data": {
           "name": "Group name",
           "covers": "Covers",
-          "weather_entity": "Weather entity",
-          "morning_time": "Morning open time. If this falls inside the quiet window it is automatically shifted to the end of quiet time.",
+          "weather_entity": "Weather entity"
+        },
+        "data_description": {
+          "name": "Name of the cover group. The entity ID is derived from this.",
+          "covers": "All covers that should be controlled together.",
+          "weather_entity": "Home Assistant weather entity for current conditions and temperature."
+        }
+      },
+      "schedule": {
+        "title": "Schedule",
+        "description": "Set when covers open in the morning, close in the evening, and the quiet period (no movement).",
+        "data": {
+          "morning_time": "Morning open time",
           "enable_morning": "Enable morning",
           "enable_evening": "Enable evening",
+          "enable_quiet_mode": "Enable quiet mode",
+          "quiet_start": "Quiet mode start",
+          "quiet_end": "Quiet mode end"
+        },
+        "data_description": {
+          "morning_time": "Morning open time. If this falls inside the quiet window it is automatically shifted to the end of quiet time.",
+          "enable_morning": "Enables the morning trigger that opens the covers at the configured time.",
+          "enable_evening": "Enables the sunset trigger that moves the covers to the evening position.",
+          "enable_quiet_mode": "During quiet time no movements are executed.",
+          "quiet_start": "Start of the quiet period (HH:MM:SS).",
+          "quiet_end": "End of the quiet period (HH:MM:SS)."
+        }
+      },
+      "sun_temp": {
+        "title": "Sun & Temperature",
+        "description": "Configure window orientation and temperature logic. These values determine when the sun counts as 'in the window' and above which temperature shading is applied.",
+        "data": {
           "window_orientation": "Window orientation (azimuth)",
           "sun_angle_tolerance": "Tolerance angle left/right",
           "min_sun_elevation": "Minimum sun elevation",
@@ -204,15 +186,41 @@
           "temp_source": "Temperature sensor (optional)",
           "use_forecast_max_temp": "Use daily maximum temperature",
           "temp_forecast_entity": "Daily max temperature sensor (optional)",
-          "cloudy_conditions": "Cloudy weather conditions",
+          "cloudy_conditions": "Cloudy weather conditions"
+        },
+        "data_description": {
+          "window_orientation": "Compass direction of the window in degrees: 0 = North, 90 = East, 180 = South, 270 = West.",
+          "sun_angle_tolerance": "Angular range left and right of the window direction where the sun counts as 'in the window'.",
+          "min_sun_elevation": "Minimum sun height above the horizon. Below this no shading is applied (e.g. winter).",
+          "temp_threshold": "Above this temperature it is considered warm and the sun-protection position is used.",
+          "temp_source": "Optional temperature sensor. If not set, the weather entity temperature is used.",
+          "use_forecast_max_temp": "Enable for proactive decisions: the integration calculates when the sun will hit the window today and uses the predicted temperature and weather condition at that time. Falls back to the daily max temperature if the hourly forecast is unavailable.",
+          "temp_forecast_entity": "Optional sensor for today's maximum temperature (fallback when the hourly forecast is unavailable).",
+          "cloudy_conditions": "Weather conditions under which the covers should open."
+        }
+      },
+      "positions": {
+        "title": "Positions",
+        "description": "Set the target positions for different situations (sun shading, cloudy, evening).",
+        "data": {
           "position_sunny_in_angle": "Position for sun in angle & warm",
           "position_sunny_outside_angle": "Position for sun outside or too cold",
           "position_cloudy": "Position for cloudy weather",
           "position_evening": "Evening position",
-          "invert_positions": "Invert positions",
-          "enable_quiet_mode": "Enable quiet mode",
-          "quiet_start": "Quiet mode start",
-          "quiet_end": "Quiet mode end",
+          "invert_positions": "Invert positions"
+        },
+        "data_description": {
+          "position_sunny_in_angle": "Target position when the sun shines into the window and it is warm.",
+          "position_sunny_outside_angle": "Target position when the sun is not directly in the window or it is too cold.",
+          "position_cloudy": "Target position for cloudy weather.",
+          "position_evening": "Target position in the evening.",
+          "invert_positions": "Swaps the meaning of positions: 0% = down, 100% = up."
+        }
+      },
+      "behavior": {
+        "title": "Behavior",
+        "description": "Configure the re-evaluation interval, manual operation pause, presence-based extension and test mode.",
+        "data": {
           "enable_reevaluation": "Enable periodic re-evaluation",
           "reevaluate_interval": "Re-evaluation interval",
           "min_position_change": "Minimum position change",
@@ -221,6 +229,16 @@
           "presence_sensor": "Presence sensor",
           "presence_pause_extension": "Presence cooldown",
           "test_mode": "Test mode (no movement)"
+        },
+        "data_description": {
+          "enable_reevaluation": "Periodically recalculate the target position, not just morning/evening.",
+          "reevaluate_interval": "Interval for the periodic re-evaluation.",
+          "min_position_change": "Minimum difference from the current position before a movement is triggered.",
+          "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
+          "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
+          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
+          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
+          "test_mode": "Active: calculations run but the covers do not move."
         }
       }
     }
