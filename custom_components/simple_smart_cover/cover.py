@@ -939,7 +939,9 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
         """Get the hourly forecast from a weather entity.
 
         Tries the ``forecast`` state attribute first (older HA versions) and
-        falls back to the ``weather.get_forecast`` service (HA 2024.2+).
+        falls back to the ``weather.get_forecasts`` service (HA 2024.2+).
+        Also tries the older ``weather.get_forecast`` (singular) name for
+        compatibility with HA versions that still use it.
         """
         # Try the forecast attribute first (works in all HA versions that
         # still populate it; no service call overhead).
@@ -949,32 +951,44 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEn
             if forecast:
                 return forecast
 
-        # Fall back to the weather.get_forecast service (HA 2024.2+).
-        try:
-            response = await self.hass.services.async_call(
-                "weather",
-                "get_forecast",
-                {"entity_id": weather_entity, "type": "hourly"},
-                return_response=True,
-            )
-        except Exception as exc:  # noqa: BLE001
-            _LOGGER.warning(
-                "Could not fetch weather forecast for %s: %s", weather_entity, exc
-            )
-            return None
+        # Try weather.get_forecasts (plural, HA 2024.2+) then
+        # weather.get_forecast (singular, older HA versions).
+        for service_name in ("get_forecasts", "get_forecast"):
+            try:
+                response = await self.hass.services.async_call(
+                    "weather",
+                    service_name,
+                    {"entity_id": weather_entity, "type": "hourly"},
+                    return_response=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.debug(
+                    "weather.%s not available for %s: %s",
+                    service_name,
+                    weather_entity,
+                    exc,
+                )
+                continue
 
-        if not isinstance(response, dict):
-            return None
+            if not isinstance(response, dict):
+                continue
 
-        # Response shape: {entity_id: {"forecast": [...]}}
-        entity_response = response.get(weather_entity)
-        if isinstance(entity_response, dict):
-            return entity_response.get("forecast", [])
+            # Response shape: {entity_id: {"forecast": [...]}}
+            entity_response = response.get(weather_entity)
+            if isinstance(entity_response, dict):
+                forecast = entity_response.get("forecast", [])
+                if forecast:
+                    return forecast
 
-        # Some HA versions may return a flat {"forecast": [...]} dict.
-        if "forecast" in response:
-            return response["forecast"]
+            # Some HA versions may return a flat {"forecast": [...]} dict.
+            if "forecast" in response:
+                return response["forecast"]
 
+        _LOGGER.info(
+            "Could not fetch weather forecast for %s via any service, "
+            "falling back to reactive mode",
+            weather_entity,
+        )
         return None
 
     def _set_decision(self, reason: str, ctx: DecisionContext, *, move: bool) -> None:
