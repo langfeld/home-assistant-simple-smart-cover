@@ -55,6 +55,14 @@ def get_sun_in_window_time(
     except Exception as exc:
         raise RuntimeError(f"Could not create astral LocationInfo: {exc}") from exc
 
+    # Some astral versions don't set elevation in the constructor, but the
+    # sun() function requires it. Set it explicitly (HA config elevation or 0).
+    try:
+        if not hasattr(loc, "elevation") or loc.elevation is None:
+            loc.elevation = getattr(hass.config, "elevation", 0) or 0
+    except (AttributeError, TypeError):
+        pass
+
     now = dt_util.now()
 
     try:
