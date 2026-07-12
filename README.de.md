@@ -12,6 +12,7 @@ Eine Home Assistant Integration zur automatischen Steuerung von Rollläden basie
 - **Automatisches Schließen** bei Sonnenuntergang
 - **Ruhemodus** mit konfigurierbarem Zeitraum
 - **Pause nach manueller Bedienung**, damit der Intervall-Check nicht sofort überschreibt
+- **Anwesenheits-basierte Pause-Verlängerung**, damit die Automatik nicht gegen den Nutzer arbeitet, während ein Raum belegt ist (optional, pro Gruppe)
 - **Testmodus**, um das Verhalten zu beobachten, ohne die Rollläden zu bewegen
 - Pro Rollladen-Gruppe ein eigenes **Cover-Entity** plus **Sensoren** für Zielposition und Entscheidungsgrund
 
@@ -52,6 +53,7 @@ Für jede konfigurierte Rollladen-Gruppe werden folgende Entitäten erstellt:
 - **`sensor.<name>_decision`** – Zeigt den Grund für die Entscheidung
 - **`binary_sensor.<name>_pause_active`** – Zeigt an, ob die Pause nach manueller Bedienung aktiv ist
 - **`sensor.<name>_pause_remaining`** – Zeigt die verbleibende Pausenzeit in Minuten
+- **`binary_sensor.<name>_presence_lock`** – Zeigt an, ob die Pause aktuell durch Anwesenheit gehalten wird (sticky oder Nachlauf)
 - **`button.<name>_reset_pause`** – Setzt die manuelle Pause sofort zurück
 
 Mögliche Werte für den Entscheidungs-Sensor:
@@ -89,6 +91,24 @@ decision_details:
 ```
 
 Das ist besonders hilfreich, wenn der State `sunny_outside_angle` lautet: Anhand von `checks` siehst du sofort, ob die Sonne außerhalb des Winkels steht, zu tief steht oder es zu kalt ist.
+
+### Anwesenheits-basierte Pause-Verlängerung
+
+Pro Rollladen-Gruppe kann optional ein Binary-Sensor für Anwesenheit/Bewegung konfiguriert werden. Anwesenheit **alleine startet keine Pause** – sie verlängert nur eine bestehende manuelle Pause, damit die Automatik die Rollläden nicht bewegt, während ein Raum belegt ist.
+
+Verhalten, sobald eine manuelle Pause ausgelöst wurde (z. B. jemand öffnet einen Rollladen per Hand):
+
+- Solange der konfigurierte Anwesenheits-Sensor `on` meldet, bleibt die Pause **sticky** und läuft nicht ab – unabhängig von der eingestellten manuellen Pausendauer.
+- Nachdem der Sensor `off` meldet, läuft die Pause noch für den konfigurierten **Nachlauf** (Verlängerung bei Anwesenheit, in Minuten) weiter. Das verhindert, dass die Automatik bei kurzen Abwesenheiten (z. B. etwas aus der Küche holen) eingreift.
+- Wenn der Nachlauf abgelaufen ist (oder kein Sensor konfiguriert ist), läuft die manuelle Pause wie gewohnt weiter.
+- Der Reset-Button hebt die manuelle Pause und den Nachlauf sofort auf – auch solange Anwesenheit noch `on` ist.
+
+Konfigurationsfelder:
+
+- **`presence_sensor`** – Optionaler Binary-Sensor (z. B. Bewegungs-, Anwesenheits- oder Belegungsmelder).
+- **`presence_pause_extension`** – Nachlauf in Minuten nach dem Ausschalten des Sensors. `0` bedeutet nur sticky, kein Nachlauf.
+
+Der Sensor `pause_remaining` zeigt während des sticky-Zustands den konfigurierten Nachlauf-Wert an (die Zeit, die die Pause noch laufen würde, wenn man jetzt den Raum verlässt), und zählt während des Nachlaufs ab dem Abschaltzeitpunkt herunter.
 
 ## Sprache
 

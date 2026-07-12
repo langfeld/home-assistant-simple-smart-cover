@@ -10,6 +10,7 @@ A Home Assistant integration for automating covers (rollershutters/blinds) based
 - **Automatic closing** at sunset
 - **Quiet mode** with a configurable time window
 - **Pause after manual operation** so the interval check does not immediately override user input
+- **Presence-aware pause extension** to keep the automation from fighting the user while a room is occupied (optional, per group)
 - **Test mode** to observe behaviour without moving the covers
 - One **cover entity** plus **sensors** for target position and decision reason per cover group
 
@@ -50,6 +51,7 @@ For each configured cover group the following entities are created:
 - **`sensor.<name>_decision`** – Shows the reason for the decision
 - **`binary_sensor.<name>_pause_active`** – Shows whether the manual-operation pause is active
 - **`sensor.<name>_pause_remaining`** – Shows the remaining pause time in minutes
+- **`binary_sensor.<name>_presence_lock`** – Shows whether the pause is currently held by presence (sticky or cooldown)
 - **`button.<name>_reset_pause`** – Resets the manual pause immediately
 
 Possible values for the decision sensor:
@@ -87,6 +89,24 @@ decision_details:
 ```
 
 This is especially helpful when the state is `sunny_outside_angle`: the `checks` object shows immediately whether the sun is outside the angle, too low, or it is too cold.
+
+### Presence-aware pause extension
+
+Optionally, a presence/motion binary sensor can be configured per cover group. Presence **alone never starts a pause** — it only extends an existing manual pause so the automation does not move the covers while a room is occupied.
+
+Behaviour once a manual pause has been triggered (e.g. someone opened a cover by hand):
+
+- While the configured presence sensor is `on`, the pause stays **sticky** and does not count down, regardless of the manual pause duration.
+- After the presence sensor turns `off`, the pause keeps running for the configured **cooldown** (presence pause extension, in minutes). This prevents the automation from intervening during short absences (e.g. grabbing something from the kitchen).
+- When the cooldown elapses (or no sensor is configured), the manual pause timer counts down as usual.
+- The reset button always clears both the manual pause and the cooldown immediately, even while presence is still `on`.
+
+Configuration fields:
+
+- **`presence_sensor`** – Optional binary sensor (e.g. motion, occupancy or presence detector).
+- **`presence_pause_extension`** – Cooldown in minutes after the sensor turns `off`. Set to `0` for sticky-only behaviour (no cooldown).
+
+The `pause remaining` sensor reports the configured cooldown value while presence holds the pause sticky (the time the pause would still run if the user left now), and counts down from the off-transition during the cooldown.
 
 ## Language
 

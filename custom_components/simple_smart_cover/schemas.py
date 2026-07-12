@@ -33,6 +33,8 @@ from .const import (
     CONF_POSITION_EVENING,
     CONF_POSITION_SUNNY_IN_ANGLE,
     CONF_POSITION_SUNNY_OUTSIDE_ANGLE,
+    CONF_PRESENCE_PAUSE_EXTENSION,
+    CONF_PRESENCE_SENSOR,
     CONF_QUIET_END,
     CONF_QUIET_START,
     CONF_REEVALUATE_INTERVAL,
@@ -53,6 +55,7 @@ from .const import (
     DEFAULT_POSITION_EVENING,
     DEFAULT_POSITION_SUNNY_IN_ANGLE,
     DEFAULT_POSITION_SUNNY_OUTSIDE_ANGLE,
+    DEFAULT_PRESENCE_PAUSE_EXTENSION,
     DEFAULT_REEVALUATE_INTERVAL,
     DEFAULT_SUN_ANGLE_TOLERANCE,
     DEFAULT_TEMP_THRESHOLD,
@@ -62,7 +65,11 @@ from .const import (
 )
 
 # Optional entity-selector keys that voluptuous omits when cleared by the user.
-OPTIONAL_ENTITY_KEYS = [CONF_TEMP_SOURCE, CONF_TEMP_FORECAST_ENTITY]
+OPTIONAL_ENTITY_KEYS = [
+    CONF_TEMP_SOURCE,
+    CONF_TEMP_FORECAST_ENTITY,
+    CONF_PRESENCE_SENSOR,
+]
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +115,18 @@ def _temp_sensor_selector() -> selector.EntitySelector:
         selector.EntitySelectorConfig(
             device_class="temperature", multiple=False
         )
+    )
+
+
+def _presence_sensor_selector() -> selector.EntitySelector:
+    """Entity selector for a single presence/motion binary sensor.
+
+    Restricted to the ``binary_sensor`` domain so the user picks a presence,
+    occupancy or motion sensor. The device class is intentionally not limited
+    so both ``occupancy`` and ``motion`` sensors can be selected.
+    """
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(domain="binary_sensor", multiple=False)
     )
 
 
@@ -264,6 +283,16 @@ def build_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     CONF_MANUAL_ACTIVITY_DURATION, DEFAULT_MANUAL_ACTIVITY_DURATION
                 ),
             ): _slider(1, 180, 1, "min"),
+            vol.Optional(
+                CONF_PRESENCE_SENSOR,
+                **_optional_default(defaults, CONF_PRESENCE_SENSOR),
+            ): _presence_sensor_selector(),
+            vol.Optional(
+                CONF_PRESENCE_PAUSE_EXTENSION,
+                default=defaults.get(
+                    CONF_PRESENCE_PAUSE_EXTENSION, DEFAULT_PRESENCE_PAUSE_EXTENSION
+                ),
+            ): _slider(0, 180, 1, "min"),
             vol.Optional(
                 CONF_TEST_MODE,
                 default=defaults.get(CONF_TEST_MODE, False),

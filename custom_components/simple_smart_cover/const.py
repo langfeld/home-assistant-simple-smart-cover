@@ -59,6 +59,10 @@ CONF_MIN_POSITION_CHANGE = "min_position_change"
 CONF_ENABLE_MANUAL_ACTIVITY_PAUSE = "enable_manual_activity_pause"
 CONF_MANUAL_ACTIVITY_DURATION = "manual_activity_duration"
 
+# Presence-based pause extension
+CONF_PRESENCE_SENSOR = "presence_sensor"
+CONF_PRESENCE_PAUSE_EXTENSION = "presence_pause_extension"
+
 # Test mode
 CONF_TEST_MODE = "test_mode"
 
@@ -93,6 +97,7 @@ DEFAULT_POSITION_EVENING = 0
 DEFAULT_REEVALUATE_INTERVAL = "30"
 DEFAULT_MIN_POSITION_CHANGE = 5
 DEFAULT_MANUAL_ACTIVITY_DURATION = 15
+DEFAULT_PRESENCE_PAUSE_EXTENSION = 30
 
 # ---------------------------------------------------------------------------
 # Config migration
@@ -161,6 +166,7 @@ ENTITY_NAME_TARGET_POSITION = "Zielposition"
 ENTITY_NAME_DECISION = "Entscheidung"
 ENTITY_NAME_PAUSE_ACTIVE = "Pause aktiv"
 ENTITY_NAME_PAUSE_REMAINING = "Pause verbleibend"
+ENTITY_NAME_PRESENCE_LOCKED = "Anwesenheit-Sperre"
 ENTITY_NAME_RESET_PAUSE = "Pause zurücksetzen"
 
 # ---------------------------------------------------------------------------

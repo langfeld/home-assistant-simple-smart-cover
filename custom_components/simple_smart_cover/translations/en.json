@@ -38,6 +38,8 @@
           "min_position_change": "Minimum difference from the current position before a movement is triggered.",
           "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
           "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
+          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
+          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
           "test_mode": "Active: calculations run but the covers do not move."
         },
         "data": {
@@ -68,6 +70,8 @@
           "min_position_change": "Minimum position change",
           "enable_manual_activity_pause": "Pause after manual operation",
           "manual_activity_duration": "Manual pause duration",
+          "presence_sensor": "Presence sensor",
+          "presence_pause_extension": "Presence cooldown",
           "test_mode": "Test mode (no movement)"
         }
       },
@@ -96,6 +100,8 @@
           "min_position_change": "Minimum difference from the current position before a movement is triggered.",
           "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
           "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
+          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
+          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
           "test_mode": "Active: calculations run but the covers do not move."
         },
         "data": {
@@ -126,6 +132,8 @@
           "min_position_change": "Minimum position change",
           "enable_manual_activity_pause": "Pause after manual operation",
           "manual_activity_duration": "Manual pause duration",
+          "presence_sensor": "Presence sensor",
+          "presence_pause_extension": "Presence cooldown",
           "test_mode": "Test mode (no movement)"
         }
       },
@@ -178,6 +186,8 @@
           "min_position_change": "Minimum difference from the current position before a movement is triggered.",
           "enable_manual_activity_pause": "After manual operation the automation is paused briefly.",
           "manual_activity_duration": "Duration of the pause after manual operation in minutes.",
+          "presence_sensor": "Optional binary sensor (e.g. motion or presence detector). Once a manual pause is active, presence keeps it sticky and extends it by the value below (cooldown).",
+          "presence_pause_extension": "Cooldown in minutes after the presence sensor reports 'off'. 0 = no cooldown, sticky only while presence is active.",
           "test_mode": "Active: calculations run but the covers do not move."
         },
         "data": {
@@ -208,6 +218,8 @@
           "min_position_change": "Minimum position change",
           "enable_manual_activity_pause": "Pause after manual operation",
           "manual_activity_duration": "Manual pause duration",
+          "presence_sensor": "Presence sensor",
+          "presence_pause_extension": "Presence cooldown",
           "test_mode": "Test mode (no movement)"
         }
       }

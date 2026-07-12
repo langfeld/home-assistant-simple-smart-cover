@@ -27,6 +27,7 @@ from .const import (
     ENTITY_NAME_DECISION,
     ENTITY_NAME_PAUSE_ACTIVE,
     ENTITY_NAME_PAUSE_REMAINING,
+    ENTITY_NAME_PRESENCE_LOCKED,
     ENTITY_NAME_TARGET_POSITION,
 )
 from .entities import (
@@ -40,13 +41,14 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Create the four sensors for the config entry."""
+    """Create the sensors for the config entry."""
     async_add_entities(
         [
             SimpleSmartCoverTargetPositionSensor(hass, config_entry),
             SimpleSmartCoverDecisionSensor(hass, config_entry),
             SimpleSmartCoverPauseSensor(hass, config_entry),
             SimpleSmartCoverPauseRemainingSensor(hass, config_entry),
+            SimpleSmartCoverPresenceLockSensor(hass, config_entry),
         ]
     )
 
@@ -140,3 +142,32 @@ class SimpleSmartCoverPauseRemainingSensor(SimpleSmartCoverPauseEntityMixin, Sen
         if cover is None:
             return None
         return cover.get_pause_remaining_minutes()
+
+
+class SimpleSmartCoverPresenceLockSensor(SimpleSmartCoverPauseEntityMixin, BinarySensorEntity):
+    """Binary sensor showing whether presence holds the pause active.
+
+    Distinct from the manual-pause binary sensor: this is only ``on`` when a
+    manual pause exists AND the configured presence sensor is either currently
+    ``on`` (sticky) or within the nachlauf window after it turned off. Without
+    a configured presence sensor this sensor always reports ``off``.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = ENTITY_NAME_PRESENCE_LOCKED
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+        """Initialize the presence-lock binary sensor."""
+        self.hass = hass
+        self._config_entry = config_entry
+        self._entry_id = config_entry.entry_id
+        self._attr_unique_id = f"{config_entry.entry_id}_presence_lock"
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if the pause is currently held by presence."""
+        cover = self._get_cover_entity()
+        if cover is None:
+            return None
+        return cover.is_presence_lock_active()

@@ -38,6 +38,8 @@
           "min_position_change": "Minimale Differenz zur aktuellen Position, bevor eine Bewegung ausgelöst wird.",
           "enable_manual_activity_pause": "Nach manueller Bedienung wird die Automatik kurzzeitig pausiert.",
           "manual_activity_duration": "Dauer der Pause nach manueller Bedienung in Minuten.",
+          "presence_sensor": "Optionaler Binary-Sensor (z. B. Bewegungs- oder Anwesenheitsmelder). Sobald eine manuelle Pause aktiv ist, hält Anwesenheit diese Pause offen und verlängert sie um den unten angegebenen Wert (Nachlauf).",
+          "presence_pause_extension": "Nachlauf in Minuten, nachdem der Anwesenheits-Sensor 'off' meldet. 0 = kein Nachlauf, nur sticky solange Anwesenheit aktiv ist.",
           "test_mode": "Aktiv: Berechnungen laufen, aber die Rollläden bewegen sich nicht."
         },
         "data": {
@@ -68,6 +70,8 @@
           "min_position_change": "Minimale Positionsänderung",
           "enable_manual_activity_pause": "Pause nach manueller Bedienung",
           "manual_activity_duration": "Dauer der manuellen Pause",
+          "presence_sensor": "Anwesenheits-Sensor",
+          "presence_pause_extension": "Verlängerung bei Anwesenheit",
           "test_mode": "Testmodus (keine Bewegung)"
         }
       },
@@ -96,6 +100,8 @@
           "min_position_change": "Minimale Differenz zur aktuellen Position, bevor eine Bewegung ausgelöst wird.",
           "enable_manual_activity_pause": "Nach manueller Bedienung wird die Automatik kurzzeitig pausiert.",
           "manual_activity_duration": "Dauer der Pause nach manueller Bedienung in Minuten.",
+          "presence_sensor": "Optionaler Binary-Sensor (z. B. Bewegungs- oder Anwesenheitsmelder). Sobald eine manuelle Pause aktiv ist, hält Anwesenheit diese Pause offen und verlängert sie um den unten angegebenen Wert (Nachlauf).",
+          "presence_pause_extension": "Nachlauf in Minuten, nachdem der Anwesenheits-Sensor 'off' meldet. 0 = kein Nachlauf, nur sticky solange Anwesenheit aktiv ist.",
           "test_mode": "Aktiv: Berechnungen laufen, aber die Rollläden bewegen sich nicht."
         },
         "data": {
@@ -126,6 +132,8 @@
           "min_position_change": "Minimale Positionsänderung",
           "enable_manual_activity_pause": "Pause nach manueller Bedienung",
           "manual_activity_duration": "Dauer der manuellen Pause",
+          "presence_sensor": "Anwesenheits-Sensor",
+          "presence_pause_extension": "Verlängerung bei Anwesenheit",
           "test_mode": "Testmodus (keine Bewegung)"
         }
       },
@@ -178,6 +186,8 @@
           "min_position_change": "Minimale Differenz zur aktuellen Position, bevor eine Bewegung ausgelöst wird.",
           "enable_manual_activity_pause": "Nach manueller Bedienung wird die Automatik kurzzeitig pausiert.",
           "manual_activity_duration": "Dauer der Pause nach manueller Bedienung in Minuten.",
+          "presence_sensor": "Optionaler Binary-Sensor (z. B. Bewegungs- oder Anwesenheitsmelder). Sobald eine manuelle Pause aktiv ist, hält Anwesenheit diese Pause offen und verlängert sie um den unten angegebenen Wert (Nachlauf).",
+          "presence_pause_extension": "Nachlauf in Minuten, nachdem der Anwesenheits-Sensor 'off' meldet. 0 = kein Nachlauf, nur sticky solange Anwesenheit aktiv ist.",
           "test_mode": "Aktiv: Berechnungen laufen, aber die Rollläden bewegen sich nicht."
         },
         "data": {
@@ -208,6 +218,8 @@
           "min_position_change": "Minimale Positionsänderung",
           "enable_manual_activity_pause": "Pause nach manueller Bedienung",
           "manual_activity_duration": "Dauer der manuellen Pause",
+          "presence_sensor": "Anwesenheits-Sensor",
+          "presence_pause_extension": "Verlängerung bei Anwesenheit",
           "test_mode": "Testmodus (keine Bewegung)"
         }
       }

@@ -26,11 +26,14 @@ from .const import (
     CONF_ENABLE_QUIET_MODE,
     CONF_MANUAL_ACTIVITY_DURATION,
     CONF_MIN_POSITION_CHANGE,
+    CONF_PRESENCE_PAUSE_EXTENSION,
+    CONF_PRESENCE_SENSOR,
     CONF_QUIET_END,
     CONF_QUIET_START,
     CONF_TEST_MODE,
     DEFAULT_MANUAL_ACTIVITY_DURATION,
     DEFAULT_MIN_POSITION_CHANGE,
+    DEFAULT_PRESENCE_PAUSE_EXTENSION,
     DOMAIN,
 )
 from .decision import DecisionContext, DecisionEngine
@@ -90,6 +93,14 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
         # Manual-activity pause tracking.
         self._manual_pause_until: datetime | None = None
 
+        # Presence-based pause extension. Presence alone does not start a
+        # pause; it only holds (sticky) and extends (nachlauf) an existing
+        # manual pause so the automation does not fight the user while a
+        # room is occupied.
+        self._presence_active: bool = False
+        self._presence_off_at: datetime | None = None
+        self._unsub_presence: Callable[[], None] | None = None
+
         # Evening state is persisted so re-evaluation intervals do not switch
         # back to daytime logic after sunset.
         self._force_evening = False
@@ -125,6 +136,8 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
         )
         self._register_cover_state_listener()
         self.async_on_remove(self._unregister_cover_state_listener)
+        self._register_presence_listener()
+        self.async_on_remove(self._unregister_presence_listener)
 
     def _register_cover_state_listener(self) -> None:
         """Register or re-register the real-cover state-change listener."""
@@ -143,11 +156,79 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
             self._unsub_cover_state()
             self._unsub_cover_state = None
 
+    def _register_presence_listener(self) -> None:
+        """Register or re-register the presence-sensor state listener.
+
+        When no presence sensor is configured the presence state is reset to
+        defaults so a previously configured sensor does not keep the pause
+        sticky after the user cleared the field.
+        """
+        if self._unsub_presence is not None:
+            self._unsub_presence()
+            self._unsub_presence = None
+
+        presence_sensor = self._data.get(CONF_PRESENCE_SENSOR)
+        if not presence_sensor:
+            self._presence_active = False
+            self._presence_off_at = None
+            return
+
+        # Seed the initial presence state from the current entity state so the
+        # sticky/nachlauf logic works before the first state change arrives.
+        state = self.hass.states.get(presence_sensor)
+        self._presence_active = bool(state is not None and state.state == "on")
+        self._presence_off_at = None
+
+        self._unsub_presence = async_track_state_change_event(
+            self.hass, [presence_sensor], self._async_presence_state_changed
+        )
+
+    def _unregister_presence_listener(self) -> None:
+        """Unsubscribe the presence-sensor state-change listener."""
+        if self._unsub_presence is not None:
+            self._unsub_presence()
+            self._unsub_presence = None
+
+    @callback
+    def _async_presence_state_changed(self, event) -> None:
+        """Track presence-sensor transitions and refresh the pause state.
+
+        ``on`` marks the room as occupied and clears any nachlauf window
+        (sticky mode). Any other state (``off``, ``unavailable``,
+        ``unknown``) is treated as not present (fail-open) and starts the
+        nachlauf window from the transition time so short absences (e.g.
+        grabbing something from the kitchen) do not let the automation
+        intervene.
+        """
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+
+        if new_state.state == "on":
+            self._presence_active = True
+            self._presence_off_at = None
+        else:
+            # Only start the nachlauf window on an actual on->off transition
+            # so a sensor that reports off repeatedly does not reset it.
+            if self._presence_active:
+                self._presence_off_at = dt_util.now()
+            self._presence_active = False
+
+        _LOGGER.debug(
+            "Presence sensor for %s changed to %s (active=%s, off_at=%s)",
+            self._config_entry.title,
+            new_state.state,
+            self._presence_active,
+            self._presence_off_at,
+        )
+        self.async_write_ha_state()
+
     async def _async_update_options(
         self, hass: HomeAssistant, config_entry: ConfigEntry
     ) -> None:
         """Handle options changes: re-register listeners, rebuild triggers, recalculate."""
         self._register_cover_state_listener()
+        self._register_presence_listener()
 
         from .trigger import async_setup_triggers
 
@@ -270,32 +351,125 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
             return False
         return self._refresh_manual_pause_state()
 
+    def is_presence_lock_active(self) -> bool:
+        """Return True if the pause is currently held by presence.
+
+        Presence alone never starts a pause; this is only True when a manual
+        pause exists AND the configured presence sensor is either currently
+        ``on`` (sticky) or within the nachlauf window after it turned off.
+        """
+        if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
+            return False
+        if self._manual_pause_until is None:
+            return False
+        if not self._data.get(CONF_PRESENCE_SENSOR):
+            return False
+        if self._presence_active:
+            return True
+        if self._presence_off_at is None:
+            return False
+        extension = timedelta(
+            minutes=self._data.get(
+                CONF_PRESENCE_PAUSE_EXTENSION, DEFAULT_PRESENCE_PAUSE_EXTENSION
+            )
+        )
+        return dt_util.now() < self._presence_off_at + extension
+
     def get_pause_remaining_minutes(self) -> int | None:
-        """Return remaining pause minutes, or None if not paused."""
+        """Return remaining pause minutes, or None if not paused.
+
+        While presence holds the pause sticky, the configured nachlauf value
+        is reported (the time the pause would still run if the user left
+        now). During the nachlauf window the value counts down from the
+        off-transition + extension. Otherwise the manual-pause timer counts
+        down as before.
+        """
         if not self.is_manual_pause_active():
             return None
-        remaining = self._manual_pause_until - dt_util.now()
+
+        now = dt_util.now()
+        has_presence_sensor = bool(self._data.get(CONF_PRESENCE_SENSOR))
+
+        if has_presence_sensor and self._presence_active:
+            # Sticky: report the nachlauf value that would apply on leave.
+            return int(
+                self._data.get(
+                    CONF_PRESENCE_PAUSE_EXTENSION, DEFAULT_PRESENCE_PAUSE_EXTENSION
+                )
+            )
+
+        if has_presence_sensor and self._presence_off_at is not None:
+            extension = timedelta(
+                minutes=self._data.get(
+                    CONF_PRESENCE_PAUSE_EXTENSION, DEFAULT_PRESENCE_PAUSE_EXTENSION
+                )
+            )
+            remaining = (self._presence_off_at + extension) - now
+            return max(0, int(remaining.total_seconds() // 60))
+
+        remaining = self._manual_pause_until - now
         return max(0, int(remaining.total_seconds() // 60))
 
     def reset_manual_pause(self) -> None:
-        """Reset the manual activity pause immediately."""
+        """Reset the manual activity pause immediately.
+
+        Clears both the manual pause timer and the presence nachlauf window so
+        the reset takes precedence over an active presence lock. The live
+        ``_presence_active`` flag is intentionally left untouched because it
+        mirrors the sensor state; without ``_manual_pause_until`` the
+        presence lock has no effect.
+        """
         self._manual_pause_until = None
+        self._presence_off_at = None
         _LOGGER.debug("Manual activity pause reset for %s", self._config_entry.title)
         self.async_write_ha_state()
 
     def _refresh_manual_pause_state(self) -> bool:
-        """Clear an expired pause. Return True if the pause is still active."""
+        """Clear an expired pause. Return True if the pause is still active.
+
+        Evaluation order when a presence sensor is configured:
+        1. No manual pause recorded -> not paused (presence alone does not
+           start a pause, only extends an existing one).
+        2. Presence ``on`` -> sticky, pause stays active regardless of the
+           manual timer.
+        3. Within the nachlauf window after presence turned off -> active.
+        4. Manual pause timer not yet expired -> active.
+        5. Everything expired -> clear and return False.
+        """
         if not self._data.get(CONF_ENABLE_MANUAL_ACTIVITY_PAUSE, False):
             self._manual_pause_until = None
+            self._presence_off_at = None
             return False
 
         if self._manual_pause_until is None:
+            # Nothing to extend; drop a stale nachlauf window if any.
+            self._presence_off_at = None
             return False
 
-        if dt_util.now() < self._manual_pause_until:
+        now = dt_util.now()
+        presence_sensor = self._data.get(CONF_PRESENCE_SENSOR)
+
+        if presence_sensor:
+            if self._presence_active:
+                return True
+            extension = timedelta(
+                minutes=self._data.get(
+                    CONF_PRESENCE_PAUSE_EXTENSION, DEFAULT_PRESENCE_PAUSE_EXTENSION
+                )
+            )
+            if (
+                self._presence_off_at is not None
+                and now < self._presence_off_at + extension
+            ):
+                return True
+            # Nachlauf expired: clear it so the manual timer can expire below.
+            self._presence_off_at = None
+
+        if now < self._manual_pause_until:
             return True
 
         self._manual_pause_until = None
+        self._presence_off_at = None
         return False
 
     # -- quiet time --------------------------------------------------------
@@ -332,6 +506,11 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
             "decision_details": self._decision_details,
             "should_move": self._should_move,
             "target_position": self._target_position,
+            "presence_active": self._presence_active,
+            "presence_lock_active": self.is_presence_lock_active(),
+            "presence_off_at": (
+                self._presence_off_at.isoformat() if self._presence_off_at else None
+            ),
         }
 
     @property
