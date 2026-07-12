@@ -114,6 +114,19 @@ Der Sensor `pause_remaining` zeigt während des sticky-Zustands den konfiguriert
 
 Fällt die eingestellte morgendliche Hochfahrzeit in das Ruhezeit-Fenster, wird der Morgen-Trigger automatisch auf eine Sekunde nach Ende der Ruhezeit verschoben. Ohne diese Verschiebung würde die morgendliche Auswertung `quiet_time` zurückgeben und keine Bewegung auslösen, sodass die Rollläden den ganzen Tag auf der Abend-Position blieben (insbesondere, wenn die regelmäßige Neubewertung deaktiviert ist). Die Verschiebung wird im Home Assistant-Log protokolliert, damit die effektive Trigger-Zeit sichtbar ist.
 
+### Vorausschauender Forecast-Modus (Tageshöchsttemperatur verwenden)
+
+Wenn **Tageshöchsttemperatur verwenden** aktiviert ist, wechselt die Integration von einer reaktiven zu einer vorausschauenden Entscheidung:
+
+1. **Sonnenstand-Berechnung**: zum Evaluationszeitpunkt (z. B. morgens) berechnet die Integration, wann die Sonne heute in das konfigurierte Fenster fällt (Azimuth innerhalb der Toleranz, Elevation über dem Minimum). Dazu wird die `astral`-Bibliothek (HA-Abhängigkeit) mit den HA-Standorteinstellungen genutzt.
+2. **Forecast-Lookup**: wenn die Sonne heute ans Fenster kommt, wird der stündliche Wetter-Forecast abgerufen und die Temperatur sowie Wetterbedingung zum berechneten Sonnenstand-Zeitpunkt extrahiert.
+3. **Entscheidung**: die Entscheidung nutzt die vorhergesagte Temperatur und Wetterbedingung zu diesem Zeitpunkt — nicht die aktuelle Sonnenposition oder aktuelle Temperatur. Das bedeutet, dass die Rollläden bei der morgendlichen Auswertung für den ganzen Tag positioniert werden können, selbst wenn die Sonne erst nachmittags ans Fenster kommt.
+4. **Fallback**: falls der stündliche Forecast nicht ermittelbar ist (z. B. die Wetter-Entity keinen liefert), fällt die Integration auf den konfigurierten Tageshöchsttemperatur-Sensor und die aktuelle Wetterbedingung zurück.
+
+Dieser Modus ist besonders nützlich, wenn die regelmäßige Neubewertung deaktiviert ist: die morgendliche Auswertung trifft eine einzelne, informierte Entscheidung für den gesamten Tag basierend auf dem Forecast zum relevanten Sonnenstand-Zeitpunkt.
+
+Das Attribut `decision_details` zeigt `forecast_mode: true` und `sun_in_window_time` (ISO-Zeitstempel), wenn dieser Modus aktiv ist, sodass die berechnete Zeit und die Forecast-Werte im Diagnose-Sensor nachvollziehbar sind.
+
 ## Sprache
 
 Die Integration liefert englische und deutsche Übersetzungen mit. Home Assistant wählt die Sprache automatisch anhand der HA-Oberflächensprache. Entity-Namen sind auf Englisch, damit sie über alle Spracheinstellungen hinweg stabil bleiben.

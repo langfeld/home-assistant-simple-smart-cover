@@ -13,6 +13,7 @@ One config entry = one cover group. The integration creates:
 - A `sensor` for the decision reason
 - A `binary_sensor` showing whether the manual activity pause is active
 - A `sensor` showing the remaining pause minutes
+- A `binary_sensor` showing whether the presence lock is active (optional, if a presence sensor is configured)
 - A `button` to reset the manual activity pause immediately
 
 No manual Helpers are required; values are exposed as native integration sensors.
@@ -27,8 +28,9 @@ home-assistant-simple-smart-cover/
 │   ├── decision.py          # Decision engine (sun/weather/temp -> position/reason/details)
 │   ├── entities.py          # Shared entity mixins + device-info / cover-lookup helpers
 │   ├── schemas.py           # Voluptuous schema + selector builders for the config flow
+│   ├── sun_calc.py          # Sun-in-window time calculation via astral (proactive forecast mode)
 │   ├── cover.py             # Virtual cover entity + orchestration + pause handling
-│   ├── sensor.py            # Target position, decision, pause sensors
+│   ├── sensor.py            # Target position, decision, pause, presence-lock sensors
 │   ├── button.py            # Pause reset button
 │   ├── trigger.py           # Time/sun-based re-evaluation triggers
 │   └── translations/
@@ -56,6 +58,9 @@ home-assistant-simple-smart-cover/
 - The decision reason sensor exposes a `decision_details` attribute containing the live values and thresholds used for the decision (angle diff, elevation, temperature, checks, etc.). This keeps the sensor state compact while allowing detailed diagnostics.
 - Decision logic (sun angle, weather, temperature, thresholds) lives in `decision.py` (`DecisionEngine`); `cover.py` only orchestrates evaluation, pause handling and command dispatch.
 - Shared entity boilerplate (device info, cover lookup, state listeners) lives in `entities.py` mixins; sensors and button inherit from them.
+- Presence-based pause extension is optional per group. Presence alone never starts a pause; it only holds (sticky) and extends (nachlauf) an existing manual pause. The reset button always takes precedence.
+- When `use_forecast_max_temp` is enabled, the integration switches to proactive mode: `sun_calc.py` calculates when the sun will be at the window today (using `astral`), and `cover.py` fetches the hourly weather forecast at that time. The decision engine uses the forecast temperature and condition at the sun-in-window time instead of the current sun position. Fallback to `temp_forecast_entity` (day's max) if the hourly forecast is unavailable.
+- Morning time is automatically shifted past the quiet window if it falls inside it (`trigger.py: _effective_morning_time`), so the morning evaluation is not swallowed by the quiet-time early return.
 
 ## Known Issues / TODOs
 1. **HACS download URL mismatch**

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Callable
 
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -73,12 +74,38 @@ class Thresholds:
 
 
 @dataclass
+class ForecastData:
+    """Forecast values at the sun-in-window time (preemptive mode).
+
+    When ``use_forecast_max_temp`` is enabled, the cover orchestrator
+    calculates when the sun will be at the window today and fetches the
+    weather forecast for that time. This dataclass carries the forecast
+    temperature and condition so the decision engine can make a proactive
+    decision without checking the current sun position.
+
+    ``sun_in_window_time`` is ``None`` when the sun will not reach the
+    window today; in that case ``is_sunny_in_angle`` is always False.
+    """
+
+    temperature: float | None
+    condition: str | None
+    sun_in_window_time: datetime | None
+
+
+@dataclass
 class DecisionContext:
     """Snapshot of every value that drives a single decision.
 
     Building the context once per evaluation avoids the three-fold
     recomputation of sun state, angle difference and temperature that the
     original cover entity performed.
+
+    In preemptive (forecast) mode, ``forecast_mode`` is True and
+    ``sun_in_window_time`` carries the calculated sun-in-window datetime
+    (or None if the sun will not reach the window today). The
+    ``is_sunny_in_angle`` property then ignores the current sun position
+    and instead checks only whether the sun will be at the window and the
+    forecast temperature is high enough.
     """
 
     is_evening: bool
@@ -89,6 +116,8 @@ class DecisionContext:
     window_orientation: float
     angle_diff: float
     thresholds: Thresholds
+    forecast_mode: bool = False
+    sun_in_window_time: datetime | None = None
 
     @property
     def angle_in_range(self) -> bool:
@@ -107,7 +136,17 @@ class DecisionContext:
 
     @property
     def is_sunny_in_angle(self) -> bool:
-        """True when shading is desired: sun in window, high enough and warm."""
+        """True when shading is desired.
+
+        In reactive mode (default): sun currently in window, high enough and
+        warm enough.
+
+        In preemptive/forecast mode: the sun will be at the window today
+        (``sun_in_window_time`` is not None) and the forecast temperature at
+        that time meets the threshold. The current sun position is ignored.
+        """
+        if self.forecast_mode:
+            return self.sun_in_window_time is not None and self.temp_high_enough
         return (
             self.angle_in_range
             and self.elevation_high_enough
@@ -245,6 +284,7 @@ class DecisionEngine:
         self,
         is_evening: bool,
         is_cloudy: bool | None = None,
+        forecast_data: ForecastData | None = None,
     ) -> DecisionContext:
         """Build a DecisionContext from the live state.
 
@@ -252,16 +292,14 @@ class DecisionEngine:
         Passing it explicitly is useful for early-return paths (quiet time,
         manual pause, weather unavailable) where the original code forced
         is_cloudy=False.
+
+        When *forecast_data* is provided (preemptive mode), the context uses
+        the forecast temperature and condition at the sun-in-window time
+        instead of the current sun position and temperature. The
+        ``is_sunny_in_angle`` property then checks only whether the sun will
+        be at the window today and the forecast temperature is high enough.
         """
         data = self._data()
-        condition = self.get_weather_condition()
-        if is_cloudy is None:
-            cloudy_conditions = data.get(
-                CONF_CLOUDY_CONDITIONS, DEFAULT_CLOUDY_CONDITIONS
-            )
-            is_cloudy = condition in cloudy_conditions
-
-        sun = self.get_sun_state()
         orientation = data.get(
             CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION
         )
@@ -274,6 +312,48 @@ class DecisionEngine:
             ),
             temp_threshold=data.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD),
         )
+
+        if forecast_data is not None:
+            condition = forecast_data.condition or "unknown"
+            cloudy_conditions = data.get(
+                CONF_CLOUDY_CONDITIONS, DEFAULT_CLOUDY_CONDITIONS
+            )
+            is_cloudy = condition in cloudy_conditions
+            temperature = forecast_data.temperature if forecast_data.temperature is not None else 0.0
+
+            if forecast_data.sun_in_window_time is not None:
+                # Sun will be at the window: angle_diff ≈ 0, elevation ≥ min.
+                # Use approximate values for diagnostics; the actual decision
+                # only relies on sun_in_window_time being set.
+                sun = SunState(azimuth=orientation, elevation=thresholds.min_sun_elevation)
+                angle_diff = 0.0
+            else:
+                # Sun will not reach the window today.
+                sun = self.get_sun_state()
+                angle_diff = self._angle_diff(sun.azimuth, orientation)
+
+            return DecisionContext(
+                is_evening=is_evening,
+                is_cloudy=is_cloudy,
+                weather_condition=condition,
+                sun=sun,
+                temperature=temperature,
+                window_orientation=orientation,
+                angle_diff=angle_diff,
+                thresholds=thresholds,
+                forecast_mode=True,
+                sun_in_window_time=forecast_data.sun_in_window_time,
+            )
+
+        # Reactive mode (current behavior, unchanged).
+        condition = self.get_weather_condition()
+        if is_cloudy is None:
+            cloudy_conditions = data.get(
+                CONF_CLOUDY_CONDITIONS, DEFAULT_CLOUDY_CONDITIONS
+            )
+            is_cloudy = condition in cloudy_conditions
+
+        sun = self.get_sun_state()
         angle_diff = self._angle_diff(sun.azimuth, orientation)
         temperature = self.get_temperature()
 
@@ -330,7 +410,7 @@ class DecisionEngine:
 
     def details(self, ctx: DecisionContext) -> dict[str, Any]:
         """Return the diagnostic details dictionary for the given context."""
-        return {
+        result = {
             "is_evening": ctx.is_evening,
             "is_cloudy": ctx.is_cloudy,
             "weather_condition": ctx.weather_condition,
@@ -350,6 +430,14 @@ class DecisionEngine:
                 "temp_high_enough": ctx.temp_high_enough,
             },
         }
+        if ctx.forecast_mode:
+            result["forecast_mode"] = True
+            result["sun_in_window_time"] = (
+                ctx.sun_in_window_time.isoformat()
+                if ctx.sun_in_window_time
+                else None
+            )
+        return result
 
     # -- internal helpers --------------------------------------------------
 
@@ -387,6 +475,7 @@ class DecisionEngine:
 __all__ = [
     "DecisionContext",
     "DecisionEngine",
+    "ForecastData",
     "SunState",
     "Thresholds",
 ]

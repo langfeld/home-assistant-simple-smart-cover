@@ -112,6 +112,19 @@ The `pause remaining` sensor reports the configured cooldown value while presenc
 
 If the configured morning time falls inside the quiet window, the morning trigger is automatically shifted to one second after the quiet window ends. Otherwise the morning evaluation would return `quiet_time` and no movement would happen, leaving the covers at the evening position for the rest of the day (especially when periodic re-evaluation is disabled). The shift is logged in the Home Assistant log so the effective trigger time is visible.
 
+### Proactive forecast mode (use daily maximum temperature)
+
+When **use daily maximum temperature** is enabled, the integration switches from reactive to proactive decision-making:
+
+1. **Sun-in-window calculation**: at evaluation time (e.g. morning), the integration calculates at what time today the sun will enter the configured window (azimuth within tolerance, elevation above minimum). This uses the `astral` library (a Home Assistant dependency) with your HA location settings.
+2. **Forecast lookup**: if the sun will reach the window today, the hourly weather forecast is fetched and the temperature and weather condition at the sun-in-window time are extracted.
+3. **Decision**: the decision uses the forecast temperature and condition at that time — not the current sun position or current temperature. This means the covers can be positioned for the whole day at the morning evaluation, even if the sun does not reach the window until the afternoon.
+4. **Fallback**: if the hourly forecast cannot be determined (e.g. the weather entity does not provide one), the integration falls back to the configured daily max temperature sensor and the current weather condition.
+
+This mode is especially useful when periodic re-evaluation is disabled: the morning evaluation makes a single, informed decision for the entire day based on the forecast at the relevant sun-in-window time.
+
+The `decision_details` attribute shows `forecast_mode: true` and `sun_in_window_time` (ISO timestamp) when this mode is active, so you can verify the calculated time and forecast values in the diagnostic sensor.
+
 ## Language
 
 The integration ships with English and German translations. Home Assistant selects the language automatically based on your HA user interface language. Entity names are in English so they stay stable across language settings.

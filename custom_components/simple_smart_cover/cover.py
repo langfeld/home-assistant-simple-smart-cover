@@ -26,17 +26,25 @@ from .const import (
     CONF_ENABLE_QUIET_MODE,
     CONF_MANUAL_ACTIVITY_DURATION,
     CONF_MIN_POSITION_CHANGE,
+    CONF_MIN_SUN_ELEVATION,
     CONF_PRESENCE_PAUSE_EXTENSION,
     CONF_PRESENCE_SENSOR,
     CONF_QUIET_END,
     CONF_QUIET_START,
+    CONF_SUN_ANGLE_TOLERANCE,
     CONF_TEST_MODE,
+    CONF_USE_FORECAST_MAX_TEMP,
+    CONF_WEATHER_ENTITY,
+    CONF_WINDOW_ORIENTATION,
     DEFAULT_MANUAL_ACTIVITY_DURATION,
     DEFAULT_MIN_POSITION_CHANGE,
+    DEFAULT_MIN_SUN_ELEVATION,
     DEFAULT_PRESENCE_PAUSE_EXTENSION,
+    DEFAULT_SUN_ANGLE_TOLERANCE,
+    DEFAULT_WINDOW_ORIENTATION,
     DOMAIN,
 )
-from .decision import DecisionContext, DecisionEngine
+from .decision import DecisionContext, DecisionEngine, ForecastData
 from .entities import SimpleSmartCoverDeviceMixin
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,6 +63,11 @@ _OWN_POSITION_TOLERANCE = 3
 # Ignore cover state changes shortly after startup so HA state restoration does
 # not trigger a false manual-pause.
 _STARTUP_QUIET = timedelta(seconds=60)
+
+# Maximum time difference between the sun-in-window time and the closest
+# forecast entry. If the closest entry is further away than this, the forecast
+# is considered not usable and we fall back to the configured temp_forecast_entity.
+_MAX_FORECAST_TIME_DIFF = timedelta(hours=2)
 
 
 async def async_setup_entry(
@@ -572,7 +585,12 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
         if is_evening:
             ctx = self._engine.build_context(is_evening=True, is_cloudy=False)
         else:
-            ctx = self._engine.build_context(is_evening=False)
+            forecast_data = None
+            if self._data.get(CONF_USE_FORECAST_MAX_TEMP, False):
+                forecast_data = await self._build_forecast_data()
+            ctx = self._engine.build_context(
+                is_evening=False, forecast_data=forecast_data
+            )
         new_position = self._engine.target_position(ctx)
         self._target_position = new_position
         self._decision_reason = self._engine.reason(ctx)
@@ -584,6 +602,168 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
 
         if self._should_move and not self._data.get(CONF_TEST_MODE, False):
             await self._dispatch_to_covers(new_position)
+
+    # -- forecast-based preemptive decision --------------------------------
+
+    async def _build_forecast_data(self) -> ForecastData | None:
+        """Calculate sun-in-window time and fetch forecast at that time.
+
+        Returns a ForecastData with the forecast temperature and condition at
+        the calculated sun-in-window time. Falls back to the configured
+        temp_forecast_entity (day's max) and current weather condition if the
+        forecast at the sun-in-window time cannot be determined.
+
+        Returns None if the sun calculation itself fails, so the caller falls
+        back to the reactive (current-position) decision path.
+        """
+        from .sun_calc import get_sun_in_window_time
+
+        data = self._data()
+        orientation = data.get(
+            CONF_WINDOW_ORIENTATION, DEFAULT_WINDOW_ORIENTATION
+        )
+        tolerance = data.get(
+            CONF_SUN_ANGLE_TOLERANCE, DEFAULT_SUN_ANGLE_TOLERANCE
+        )
+        min_elevation = data.get(
+            CONF_MIN_SUN_ELEVATION, DEFAULT_MIN_SUN_ELEVATION
+        )
+
+        try:
+            sun_in_window_time = get_sun_in_window_time(
+                self.hass, orientation, tolerance, min_elevation
+            )
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.warning(
+                "Sun-in-window calculation failed for %s: %s, "
+                "falling back to reactive mode",
+                self._config_entry.title,
+                exc,
+            )
+            return None
+
+        if sun_in_window_time is None:
+            # Sun will not reach the window today. Still build forecast data
+            # with sun_in_window_time=None so is_sunny_in_angle is False.
+            temperature = self._engine.get_temperature()
+            condition = self._engine.get_weather_condition()
+            return ForecastData(
+                temperature=temperature,
+                condition=condition,
+                sun_in_window_time=None,
+            )
+
+        # Try to get the hourly forecast at the sun-in-window time.
+        weather_entity = data.get(CONF_WEATHER_ENTITY)
+        if weather_entity:
+            entry = await self._get_forecast_at_time(
+                weather_entity, sun_in_window_time
+            )
+            if entry is not None:
+                temp = entry.get("temperature")
+                condition = entry.get("condition")
+                if temp is not None:
+                    return ForecastData(
+                        temperature=float(temp),
+                        condition=condition or "unknown",
+                        sun_in_window_time=sun_in_window_time,
+                    )
+
+        # Fallback: use temp_forecast_entity (day's max) and current condition.
+        _LOGGER.info(
+            "Forecast at sun-in-window time %s unavailable for %s, "
+            "falling back to daily max temperature",
+            sun_in_window_time,
+            self._config_entry.title,
+        )
+        temperature = self._engine.get_temperature()
+        condition = self._engine.get_weather_condition()
+        return ForecastData(
+            temperature=temperature,
+            condition=condition,
+            sun_in_window_time=sun_in_window_time,
+        )
+
+    async def _get_forecast_at_time(
+        self, weather_entity: str, target_time: datetime
+    ) -> dict[str, Any] | None:
+        """Fetch the hourly weather forecast and find the closest entry.
+
+        Returns None if no forecast is available or the closest entry is
+        further away than _MAX_FORECAST_TIME_DIFF from target_time.
+        """
+        forecast = await self._fetch_weather_forecast(weather_entity)
+        if not forecast:
+            return None
+
+        closest: dict[str, Any] | None = None
+        closest_diff: timedelta | None = None
+
+        for entry in forecast:
+            dt = entry.get("datetime")
+            if dt is None:
+                continue
+            if isinstance(dt, str):
+                dt = dt_util.parse_datetime(dt)
+            if dt is None:
+                continue
+            diff = abs(dt - target_time)
+            if closest_diff is None or diff < closest_diff:
+                closest = entry
+                closest_diff = diff
+
+        if closest is None or closest_diff is None:
+            return None
+        if closest_diff > _MAX_FORECAST_TIME_DIFF:
+            _LOGGER.debug(
+                "Closest forecast entry is %s away from sun-in-window time, "
+                "considered too far",
+                closest_diff,
+            )
+            return None
+        return closest
+
+    async def _fetch_weather_forecast(self, weather_entity: str) -> list | None:
+        """Get the hourly forecast from a weather entity.
+
+        Tries the ``forecast`` state attribute first (older HA versions) and
+        falls back to the ``weather.get_forecast`` service (HA 2024.2+).
+        """
+        # Try the forecast attribute first (works in all HA versions that
+        # still populate it; no service call overhead).
+        state = self.hass.states.get(weather_entity)
+        if state is not None:
+            forecast = state.attributes.get("forecast")
+            if forecast:
+                return forecast
+
+        # Fall back to the weather.get_forecast service (HA 2024.2+).
+        try:
+            response = await self.hass.services.async_call(
+                "weather",
+                "get_forecast",
+                {"entity_id": weather_entity, "type": "hourly"},
+                return_response=True,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.warning(
+                "Could not fetch weather forecast for %s: %s", weather_entity, exc
+            )
+            return None
+
+        if not isinstance(response, dict):
+            return None
+
+        # Response shape: {entity_id: {"forecast": [...]}}
+        entity_response = response.get(weather_entity)
+        if isinstance(entity_response, dict):
+            return entity_response.get("forecast", [])
+
+        # Some HA versions may return a flat {"forecast": [...]} dict.
+        if "forecast" in response:
+            return response["forecast"]
+
+        return None
 
     def _set_decision(self, reason: str, ctx: DecisionContext, *, move: bool) -> None:
         """Record a non-normal decision (quiet/pause/unavailable) and publish state."""
