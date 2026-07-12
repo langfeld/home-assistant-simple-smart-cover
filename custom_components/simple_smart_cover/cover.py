@@ -18,6 +18,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -79,7 +80,7 @@ async def async_setup_entry(
     async_add_entities([SimpleSmartCoverEntity(hass, config_entry)])
 
 
-class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
+class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, RestoreEntity, CoverEntity):
     """Virtual cover entity representing one cover group and its automation."""
 
     _attr_should_poll = False
@@ -141,8 +142,20 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
     # -- lifecycle ---------------------------------------------------------
 
     async def async_added_to_hass(self) -> None:
-        """Publish the entity reference and register listeners."""
+        """Publish the entity reference and register listeners.
+
+        In-memory state (manual pause, presence nachlauf, evening mode) is
+        restored from the last state before the HA restart so manually set
+        pauses survive a restart.
+        """
         await super().async_added_to_hass()
+
+        # Restore state that was persisted in extra_state_attributes before
+        # the restart. Without this, manual pauses and presence locks would
+        # be lost every time HA restarts.
+        if (last_state := await self.async_get_last_state()) is not None:
+            self._restore_from_last_state(last_state)
+
         self.hass.data[DOMAIN][self._entry_id]["cover"] = self
         self.async_on_remove(
             self._config_entry.add_update_listener(self._async_update_options)
@@ -151,6 +164,47 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
         self.async_on_remove(self._unregister_cover_state_listener)
         self._register_presence_listener()
         self.async_on_remove(self._unregister_presence_listener)
+
+    def _restore_from_last_state(self, last_state) -> None:
+        """Restore in-memory state from the last state before restart.
+
+        Only restores values that are still valid (e.g. a pause that has not
+        expired). Expired values are silently dropped so the cover starts
+        fresh after a long downtime.
+        """
+        attrs = last_state.attributes
+        now = dt_util.now()
+
+        # Manual pause timer
+        pause_until_raw = attrs.get("manual_pause_until")
+        if pause_until_raw:
+            restored = dt_util.parse_datetime(pause_until_raw)
+            if restored is not None and now < restored:
+                self._manual_pause_until = restored
+                _LOGGER.debug(
+                    "Restored manual pause until %s for %s",
+                    restored,
+                    self._config_entry.title,
+                )
+
+        # Presence nachlauf window
+        presence_off_raw = attrs.get("presence_off_at")
+        if presence_off_raw:
+            restored = dt_util.parse_datetime(presence_off_raw)
+            if restored is not None and now < restored + timedelta(hours=12):
+                self._presence_off_at = restored
+                _LOGGER.debug(
+                    "Restored presence off_at %s for %s",
+                    restored,
+                    self._config_entry.title,
+                )
+
+        # Evening mode
+        if attrs.get("force_evening"):
+            self._force_evening = True
+            _LOGGER.debug(
+                "Restored evening mode for %s", self._config_entry.title
+            )
 
     def _register_cover_state_listener(self) -> None:
         """Register or re-register the real-cover state-change listener."""
@@ -188,9 +242,13 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
 
         # Seed the initial presence state from the current entity state so the
         # sticky/nachlauf logic works before the first state change arrives.
+        # Only clear the nachlauf window when the sensor is currently on; if
+        # it is off we keep a restored _presence_off_at so the nachlauf
+        # survives a restart.
         state = self.hass.states.get(presence_sensor)
         self._presence_active = bool(state is not None and state.state == "on")
-        self._presence_off_at = None
+        if self._presence_active:
+            self._presence_off_at = None
 
         self._unsub_presence = async_track_state_change_event(
             self.hass, [presence_sensor], self._async_presence_state_changed
@@ -513,12 +571,22 @@ class SimpleSmartCoverEntity(SimpleSmartCoverDeviceMixin, CoverEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return entity-specific state attributes."""
+        """Return entity-specific state attributes.
+
+        Includes the manual pause timer and evening flag so they survive a
+        HA restart via RestoreEntity.
+        """
         return {
             "decision_reason": self._decision_reason,
             "decision_details": self._decision_details,
             "should_move": self._should_move,
             "target_position": self._target_position,
+            "manual_pause_until": (
+                self._manual_pause_until.isoformat()
+                if self._manual_pause_until
+                else None
+            ),
+            "force_evening": self._force_evening,
             "presence_active": self._presence_active,
             "presence_lock_active": self.is_presence_lock_active(),
             "presence_off_at": (
