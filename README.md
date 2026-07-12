@@ -8,7 +8,7 @@ A Home Assistant integration for automating covers (rollershutters/blinds) based
 - **Weather-aware positioning** during the day with periodic re-evaluation
 - **Sun shading** based on azimuth, elevation and temperature
 - **Automatic closing** at sunset
-- **Quiet mode** with a configurable time window
+- **Quiet mode** with a configurable time window (morning time is automatically shifted past the quiet window if it falls inside it)
 - **Pause after manual operation** so the interval check does not immediately override user input
 - **Presence-aware pause extension** to keep the automation from fighting the user while a room is occupied (optional, per group)
 - **Test mode** to observe behaviour without moving the covers
@@ -107,6 +107,10 @@ Configuration fields:
 - **`presence_pause_extension`** – Cooldown in minutes after the sensor turns `off`. Set to `0` for sticky-only behaviour (no cooldown).
 
 The `pause remaining` sensor reports the configured cooldown value while presence holds the pause sticky (the time the pause would still run if the user left now), and counts down from the off-transition during the cooldown.
+
+### Morning time and quiet mode
+
+If the configured morning time falls inside the quiet window, the morning trigger is automatically shifted to one second after the quiet window ends. Otherwise the morning evaluation would return `quiet_time` and no movement would happen, leaving the covers at the evening position for the rest of the day (especially when periodic re-evaluation is disabled). The shift is logged in the Home Assistant log so the effective trigger time is visible.
 
 ## Language
 

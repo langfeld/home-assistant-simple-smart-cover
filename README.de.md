@@ -10,7 +10,7 @@ Eine Home Assistant Integration zur automatischen Steuerung von Rollläden basie
 - **Wetterabhängige Positionierung** tagsüber mit regelmäßiger Neubewertung
 - **Sonnenschutz** basierend auf Azimuth, Elevation und Temperatur
 - **Automatisches Schließen** bei Sonnenuntergang
-- **Ruhemodus** mit konfigurierbarem Zeitraum
+- **Ruhemodus** mit konfigurierbarem Zeitraum (die morgendliche Hochfahrzeit wird automatisch hinter das Ende der Ruhezeit verschoben, falls sie in diese fällt)
 - **Pause nach manueller Bedienung**, damit der Intervall-Check nicht sofort überschreibt
 - **Anwesenheits-basierte Pause-Verlängerung**, damit die Automatik nicht gegen den Nutzer arbeitet, während ein Raum belegt ist (optional, pro Gruppe)
 - **Testmodus**, um das Verhalten zu beobachten, ohne die Rollläden zu bewegen
@@ -109,6 +109,10 @@ Konfigurationsfelder:
 - **`presence_pause_extension`** – Nachlauf in Minuten nach dem Ausschalten des Sensors. `0` bedeutet nur sticky, kein Nachlauf.
 
 Der Sensor `pause_remaining` zeigt während des sticky-Zustands den konfigurierten Nachlauf-Wert an (die Zeit, die die Pause noch laufen würde, wenn man jetzt den Raum verlässt), und zählt während des Nachlaufs ab dem Abschaltzeitpunkt herunter.
+
+### Morgendliche Hochfahrzeit und Ruhemodus
+
+Fällt die eingestellte morgendliche Hochfahrzeit in das Ruhezeit-Fenster, wird der Morgen-Trigger automatisch auf eine Sekunde nach Ende der Ruhezeit verschoben. Ohne diese Verschiebung würde die morgendliche Auswertung `quiet_time` zurückgeben und keine Bewegung auslösen, sodass die Rollläden den ganzen Tag auf der Abend-Position blieben (insbesondere, wenn die regelmäßige Neubewertung deaktiviert ist). Die Verschiebung wird im Home Assistant-Log protokolliert, damit die effektive Trigger-Zeit sichtbar ist.
 
 ## Sprache
 

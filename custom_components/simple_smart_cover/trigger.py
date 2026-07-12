@@ -26,8 +26,11 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_ENABLE_EVENING,
     CONF_ENABLE_MORNING,
+    CONF_ENABLE_QUIET_MODE,
     CONF_ENABLE_REEVALUATION,
     CONF_MORNING_TIME,
+    CONF_QUIET_END,
+    CONF_QUIET_START,
     CONF_REEVALUATE_INTERVAL,
     DOMAIN,
     REEVALUATE_INTERVAL_TRACKING,
@@ -40,6 +43,57 @@ _LOGGER = logging.getLogger(__name__)
 _SUNSET_RETRY_INTERVAL = timedelta(minutes=5)
 
 
+def _time_in_quiet_window(time_str: str, quiet_start: str, quiet_end: str) -> bool:
+    """Return True if time_str lies within the quiet window.
+
+    Mirrors the logic of ``SimpleSmartCoverEntity._is_quiet_time`` but for an
+    arbitrary time string instead of "now". Supports overnight windows where
+    the start time is later than the end time (e.g. 22:00 - 07:00).
+    """
+    if quiet_start <= quiet_end:
+        return quiet_start <= time_str <= quiet_end
+    return time_str >= quiet_start or time_str <= quiet_end
+
+
+def _effective_morning_time(
+    morning_time: str,
+    quiet_enabled: bool,
+    quiet_start: str,
+    quiet_end: str,
+) -> str:
+    """Return morning_time, shifted past quiet_end if it falls inside quiet time.
+
+    If the morning trigger fires during quiet time the evaluation returns
+    ``quiet_time`` and no movement happens, leaving the covers stuck at the
+    evening position for the rest of the day when re-evaluation is disabled.
+    To avoid this the morning time is automatically moved to one second after
+    ``quiet_end`` so the first daytime evaluation runs as soon as quiet time
+    ends.
+    """
+    if not quiet_enabled:
+        return morning_time
+    if not _time_in_quiet_window(morning_time, quiet_start, quiet_end):
+        return morning_time
+
+    h, m, s = map(int, quiet_end.split(":"))
+    s += 1
+    if s >= 60:
+        s = 0
+        m += 1
+        if m >= 60:
+            m = 0
+            h = (h + 1) % 24
+    shifted = f"{h:02d}:{m:02d}:{s:02d}"
+    _LOGGER.info(
+        "Morning time %s lies inside quiet window (%s-%s), shifting trigger to %s",
+        morning_time,
+        quiet_start,
+        quiet_end,
+        shifted,
+    )
+    return shifted
+
+
 async def async_setup_triggers(
     hass: HomeAssistant, entry: ConfigEntry, cover_entity: SimpleSmartCoverEntity
 ) -> None:
@@ -50,6 +104,16 @@ async def async_setup_triggers(
     # -- Morning trigger: clear evening mode and re-evaluate -----------------
     if data.get(CONF_ENABLE_MORNING, True):
         morning_time = data.get(CONF_MORNING_TIME, "07:00:00")
+        # If morning_time falls inside the quiet window, shift it to one
+        # second after quiet_end so the first daytime evaluation is not
+        # swallowed by the quiet-time early return.
+        if data.get(CONF_ENABLE_QUIET_MODE, False):
+            morning_time = _effective_morning_time(
+                morning_time,
+                quiet_enabled=True,
+                quiet_start=data.get(CONF_QUIET_START, "22:00:00"),
+                quiet_end=data.get(CONF_QUIET_END, "07:00:00"),
+            )
         try:
             hour, minute, second = map(int, morning_time.split(":"))
 
